@@ -1,3 +1,0 @@
-/home/mory/Code/DSC/Client/build/pioasm/CMakeFiles/pioasm.dir
-/home/mory/Code/DSC/Client/build/pioasm/CMakeFiles/edit_cache.dir
-/home/mory/Code/DSC/Client/build/pioasm/CMakeFiles/rebuild_cache.dir
