@@ -1,5 +1,5 @@
 # buld directory
-Client/build/*
+build/
 # Prerequisites
 *.d
 
