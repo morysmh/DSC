@@ -1,3 +1,5 @@
+# buld directory
+Client/build/*
 # Prerequisites
 *.d
 
