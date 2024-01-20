@@ -41,8 +41,8 @@
 #define PIN_SPI__Csn    11
 #define PIN_SPI_MISO    12
 #define PIN_TMC__CLK    13
-//#define PIN_TMC_STEP    14
-//#define PIN_TMC__DIR    15
+#define PIN_TMC_STEP    14
+#define PIN_TMC__DIR    15
 #define PIN__A___Pin    16
 #define PIN__B___Pin    17
 #define PIN__Z___Pin    18
@@ -84,7 +84,7 @@ typedef struct
 } CallBack_Parameter;
 
 typedef enum{
-       C_Server_ADDRESS_CAN = 0xFF,
+    C_Server_ADDRESS_CAN = 0xFF,
     C_Command_NULL = 0,
     C_command_STEP_Pulse_set_STOP = 1,
     C_command_STEP_Pulse_set_step = 2,
@@ -123,4 +123,23 @@ typedef enum{
 
 
 }ENUM_Command_List;
+
+typedef enum{
+    C_DSC_Server_ADDRESS_CAN = 0xFF,
+    C_DSC_Null = 0,
+    C_DSC_STEP_MOTOR_SET_DIV = 1,
+    C_DSC_STEP_MOTOR_SET_low_us = 2,
+    C_DSC_STEP_MOTOR_SET_max_us = 3,
+    C_DSC_STEP_MOTOR_SET_KP = 4,
+    C_DSC_STEP_MOTOR_SET_KI = 5,
+    C_DSC_STEP_MOTOR_SET_KD = 6,
+    C_DSC_STEP_MOTOR_SET_TOGO_Location = 7,
+    C_DSC_STEP_MOTOR_SET_Default_Direction = 8,
+
+    C_DSC_SENSOR_TOP_ENABLE = 9,
+    C_DSC_SENSOR_BOTTOM_ENABLE = 10,
+    C_DSC_SENSOR_TOP_READ_STATUS = 11,
+    C_DSC_SENSOR_BOTTOM_READ_STATUS = 12,
+
+}Enum_DSC;
 #endif

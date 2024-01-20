@@ -12,6 +12,8 @@ public:
     bool get_sensor_stat() const;
     bool is_triged();
     void run();
+    void enable(){p_is_enable = true;}
+    void disable(){p_is_enable = false;}
 private:
     const uint64_t c_hyst_us = 20000ULL;
     const uint64_t c_fast_run_prevent = 10ULL;
@@ -21,4 +23,5 @@ private:
     bool p_normal_stat = false;
     bool p_current_stat = false;
     bool p_is_trig = true;
+    bool p_is_enable = false;
 };

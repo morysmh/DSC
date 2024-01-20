@@ -9,12 +9,16 @@ Sensor::Sensor(uint8_t i_pin,Sensor::SensorType i_sen)
 }
 bool Sensor::get_sensor_stat() const
 {
+    if(p_is_enable == false)
+        return false;
     if(!p_normal_stat)
         return !p_current_stat;
     return p_current_stat;
 }
 bool Sensor::is_triged() 
 {
+    if(p_is_enable == false)
+        return false;
     if(!p_is_trig)
         return false;
     p_is_trig = false;
@@ -22,6 +26,8 @@ bool Sensor::is_triged()
 }
 void Sensor::run()
 {
+    if(p_is_enable == false)
+        return;
     if(p_pinNO <= 0)
         return;
     if (p_fast_run > time_us_64())

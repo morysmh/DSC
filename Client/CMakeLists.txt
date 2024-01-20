@@ -13,6 +13,8 @@ add_executable(${PROJECT_NAME}
 	src/sensor.cpp
 	src/mcp2515.c
 	src/encoder.cpp
+	src/motor.cpp
+	src/can.cpp
 	)
 
 pico_add_extra_outputs(${PROJECT_NAME})
