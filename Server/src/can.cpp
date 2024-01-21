@@ -15,8 +15,8 @@ void CanCotroll::send_data(int32_t i_para,int32_t i_val)
     p_data[p_send_head].i_para = i_para;
     p_data[p_send_head].i_val = i_val;
     p_send_head++;
-    if(p_send_head >= c_buff_size)
-        p_send_head = 0;
+    if(p_send_head > c_buff_size)
+        p_send_head = c_buff_size;
 }
 void CanCotroll::handle_message()
 {
@@ -51,7 +51,6 @@ void CanCotroll::run()
     p_can.data[2] =((p_data[p_send_tail].i_val>>16ULL) & 0xFFULL);
     p_can.data[3] =((p_data[p_send_tail].i_val>>24ULL) & 0xFFULL);
     p_can.data[4] =((p_data[p_send_tail].i_para) & 0xFFULL);
-    p_can.data[7] =(p_address & 0xFFULL);
     mcp2515_send_message(&p_can);
     p_send_tail++;
     if(p_send_tail >= c_buff_size)
@@ -63,12 +62,4 @@ CanCotroll::CanCotroll(int32_t i_add)
     if(i_add == 0)
         i_add = 100;
     p_address = i_add;
-}
-void CanCotroll::software_message(int32_t i_para,int32_t i_val)
-{
-    p_rx[p_rx_head].i_para = i_para;
-    p_rx[p_rx_head].i_val = i_val;
-    p_rx_head++;
-    if(p_rx_head >= c_buff_size)
-        p_rx_head = 0;
 }

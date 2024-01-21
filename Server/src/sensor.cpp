@@ -6,11 +6,6 @@ void Sensor::enable()
         return;
     p_is_enable = true;
 }
-void Sensor::set_normal_stat(bool i_normal)
-{
-    p_normal_stat = i_normal;
-    p_current_stat = i_normal;
-}
 Sensor::Sensor(uint8_t i_pin,Sensor::SensorType i_sen)
 {
     if(i_pin < 29)
@@ -22,7 +17,7 @@ bool Sensor::get_sensor_stat() const
 {
     if(p_is_enable == false)
         return false;
-    if(p_normal_stat)
+    if(!p_normal_stat)
         return !p_current_stat;
     return p_current_stat;
 }
@@ -49,7 +44,6 @@ void Sensor::run()
     }
     if(p_change_mili < time_us_64())
     {
-        p_change_mili = time_us_64() + c_hyst_us;
         p_current_stat = gpio_get(p_pinNO);
         p_is_trig = true;
     }

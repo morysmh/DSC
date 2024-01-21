@@ -9,7 +9,6 @@ public:
     void send_data(int32_t i_para,int32_t i_val);
     void run();
     bool read_new_msg(int32_t *i_para,int32_t *i_val);
-    void software_message(int32_t i_para,int32_t i_val);
 private:
     typedef struct{
         int8_t i_para;

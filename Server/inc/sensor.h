@@ -8,7 +8,7 @@ public:
     };
     Sensor(uint8_t i_pin,Sensor::SensorType i_sen = Zero_Sensor);
     ~Sensor(){}
-    void set_normal_stat(bool i_normal);
+    void set_normal_stat(bool i_normal){p_normal_stat = i_normal;}
     bool get_sensor_stat() const;
     bool is_triged();
     void run();

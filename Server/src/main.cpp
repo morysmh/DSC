@@ -4,7 +4,6 @@
 #include "quadrature.pio.h"
 #include "pio_rotary_encoder.pio.h"
 #include "i2c-display-lib.h"
-#include "client.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -33,7 +32,6 @@ void pio_irq_handler();
 void Encode_pio_init(uint p_pinA);
 PIO __encoder_pio;
 uint __encoder_sm;
-Client *ptr_client;
 //******************************************
 
 void Board_pin_Config();
@@ -44,11 +42,29 @@ void Usart_init_main();
 void Usart_init_wifiTest();
 void Enable_A4498();
 void init_board_config();
-void for_test_only();
 int main()
 {
+    uint8_t b_sendtoPC[20]={};
     LED_Interval Pico_LED;
+    volatile uint64_t microdelay_500ms = 0, micro_picoled = 0, microdelay_in_state = 0;
+    volatile int64_t t_nexpos = 0;
+    volatile int64_t t_encoder = 0;
+    volatile uint64_t t_send_can = 0;
+    volatile int64_t stp = 1;
     volatile int8_t add = 0;
+    volatile int32_t r_encoder = 0;
+
+    volatile int32_t r_tmp_input = 0;
+    volatile int8_t r_inputdata[32] = {};
+    volatile uint8_t r_input_indx = 0;
+    volatile int64_t t_inputdata = 0;
+    volatile const int64_t c_delay_Between_Command = 3000;
+
+    volatile uint64_t t_run_obj = 1000000;
+    volatile uint8_t inx_mot = 0;
+    char a_chrbuff[32] = {};
+
+    CallBack_Parameter sendpara = {},para =  {},serverpara = {};
 
     Pico_LED.OFF = 340000;
     Pico_LED._ON = 200000;
@@ -60,33 +76,33 @@ int main()
     init_board_config();
     add = Keys_Read_adderss();
     mcp2515_init(20);
-    volatile uint64_t t_first = time_us_64() + 25000ULL;
-    while(t_first > time_us_64());
-    tCAN r_test = {};
-    r_test.id = 2;
-    r_test.header.length = 8;
-    r_test.header.rtr = 0;
-    r_test.data[0] = 56;
-    r_test.data[1] = 6;
-    r_test.data[4] = 156;
-    mcp2515_send_message(&r_test);
-    Client thisclient(PIN_TMC_STEP,
-                    PIN_TMC__DIR,
-                    PIN_SW___Pin,
-                    PIN__Z___Pin,
-                    PIN__A___Pin,
-                    PIN_SPI_MOSI,
-                    PIN_SPI__SCK,
-                    PIN_SPI__Csn,
-                    PIN_TMC___EN,
-                    PIN_SPI_MISO,
-                    add);
-    ptr_client = &thisclient;
-    Encode_pio_init(PIN__A___Pin);
+    lcd_init(14,15);
+    lcd_setCursor(0,0);
+    lcd_print("raw data");
+    tCAN r_res = {};
+    int32_t i_val = 0;
+    char r_lcdbuff[80] = {};
+
     while (1)
     {
-        for_test_only();
-        thisclient.run();
+        if(mcp2515_check_message())
+        {
+            mcp2515_get_message(&r_res);
+            i_val = 0;
+            i_val |= (((uint32_t)r_res.data[0])<<0ULL);
+            i_val |= (((uint32_t)r_res.data[1])<<8ULL);
+            i_val |= (((uint32_t)r_res.data[2])<<16ULL);
+            i_val |= (((uint32_t)r_res.data[3])<<24ULL);
+            sprintf(r_lcdbuff,"ad:%d p:%d    ",r_res.id,r_res.data[4]);
+            lcd_setCursor(1,0);
+            lcd_print(r_lcdbuff);
+            sprintf(r_lcdbuff,"from:%d    ",r_res.data[7]);
+            lcd_setCursor(2,0);
+            lcd_print(r_lcdbuff);
+            sprintf(r_lcdbuff,"v:%d    ",i_val);
+            lcd_setCursor(3,0);
+            lcd_print(r_lcdbuff);
+        }
         chagneLED(&Pico_LED);
         PICO_LED_Stat(Pico_LED.stat);
     }
@@ -183,8 +199,8 @@ void Board_pin_Config()
         PIN_SPI__SCK,
         PIN_SPI__Csn,
         PIN_TMC__CLK,
-        PIN_TMC_STEP,
-        PIN_TMC__DIR,
+        //PIN_TMC_STEP,
+        //PIN_TMC__DIR,
         PIN_LED__RED,
         PIN_LED_Gren
         };
@@ -300,41 +316,12 @@ void pio_irq_handler()
 {
     if(pio0_hw->irq & 1)    
     {
-        ptr_client->increse_sofware_encoder(-1);
+       //TODO: add irq handle
+       //mainEncoder.set_software_inc(-1); 
     }
     if(pio0_hw->irq & 2)
     {
-        ptr_client->increse_sofware_encoder(1);
+       //mainEncoder.set_software_inc(1); 
     }
     pio0_hw->irq = 3;
-}
-void for_test_only()
-{
-    static volatile bool is_run = false;
-    static volatile uint64_t t_mili = 1900000ULL;
-    static volatile int8_t r_i = 0;
-    if(is_run == true)
-        return;
-    if(t_mili > time_us_64())
-        return;
-    switch (r_i)
-    {
-    case 0:
-        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_KP,2);
-        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_KI,0);
-        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_PID_ENABLE,1);
-        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_TOGO_Location,25000000ULL);
-        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_ENABLE,1);
-        r_i = 1;
-        t_mili = time_us_64() + 6000000ULL;
-        break;
-    case 1:
-        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_TOGO_Location,5000ULL);
-        is_run = false;
-        break;
-    
-    default:
-        r_i = 0;
-        break;
-    }
 }
