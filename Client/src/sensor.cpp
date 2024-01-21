@@ -1,5 +1,11 @@
 #include "sensor.h"
 
+void Sensor::enable()
+{
+    if(p_pinNO <= 0)
+        return;
+    p_is_enable = true;
+}
 Sensor::Sensor(uint8_t i_pin,Sensor::SensorType i_sen)
 {
     if(i_pin < 29)
@@ -27,8 +33,6 @@ bool Sensor::is_triged()
 void Sensor::run()
 {
     if(p_is_enable == false)
-        return;
-    if(p_pinNO <= 0)
         return;
     if (p_fast_run > time_us_64())
         return;

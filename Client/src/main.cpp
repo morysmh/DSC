@@ -4,9 +4,7 @@
 #include "quadrature.pio.h"
 #include "pio_rotary_encoder.pio.h"
 #include "i2c-display-lib.h"
-#include "sensor.h"
-#include "encoder.h"
-#include "motor.h"
+#include "client.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -78,21 +76,22 @@ int main()
     stdio_init_all();
     Enable_A4498();
     init_board_config();
-
-
     add = Keys_Read_adderss();
     mcp2515_init(20);
-    tCAN msg_tst = {},msg_res = {};
+    Client thisclient(PIN_TMC__CLK,
+                    PIN_TMC__DIR,
+                    PIN__Z___Pin,
+                    PIN_SW___Pin,
+                    PIN__A___Pin,
+                    PIN_SPI_MOSI,
+                    PIN_SPI__SCK,
+                    PIN_SPI__Csn,
+                    add);
+
+
     while (1)
     {
-        if(mcp2515_check_message())
-        {
-            mcp2515_get_message(&msg_res);
-            if(msg_res.id == C_Server_ADDRESS_CAN)
-            {
-                //TODO Handle Recive Message
-            }
-        }
+        thisclient.run();
         chagneLED(&Pico_LED);
         PICO_LED_Stat(Pico_LED.stat);
     }
@@ -189,8 +188,8 @@ void Board_pin_Config()
         PIN_SPI__SCK,
         PIN_SPI__Csn,
         PIN_TMC__CLK,
-        //PIN_TMC_STEP,
-        //PIN_TMC__DIR,
+        PIN_TMC_STEP,
+        PIN_TMC__DIR,
         PIN_LED__RED,
         PIN_LED_Gren
         };

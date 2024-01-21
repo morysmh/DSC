@@ -12,11 +12,8 @@ void StepMotor::change_direction()
 }
 void StepMotor::run()
 {
-//    if(p_mili_pid < time_us_64())
-//    {
-//        calc_Pid();
-//        p_mili_pid = time_us_64() + p_interval_PID_us;
-//    }
+    if(p_is_config == false)
+        return;
     if(p_mili > time_us_64())
         return;
     calc_Pid();
@@ -56,6 +53,8 @@ StepMotor::StepMotor(uint8_t i_pinPulse,
     p_pinDiv1  = i_pinDiv1;
     p_pinDiv2  = i_pinDiv2;
     p_pinDiv3  = i_pinDiv3;
+    p_is_config = true;
+    set_div(16);
 
 }
 void StepMotor::set_div(uint8_t i_div)

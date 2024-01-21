@@ -35,6 +35,7 @@ private:
     uint8_t p_pinDiv1;
     uint8_t p_pinDiv2;
     uint8_t p_pinDiv3;
+    bool p_is_config = false;
 
     bool p_pid_en = false;
     int32_t e0,e1,e2;

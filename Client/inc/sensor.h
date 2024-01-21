@@ -12,7 +12,7 @@ public:
     bool get_sensor_stat() const;
     bool is_triged();
     void run();
-    void enable(){p_is_enable = true;}
+    void enable();
     void disable(){p_is_enable = false;}
 private:
     const uint64_t c_hyst_us = 20000ULL;
