@@ -8,13 +8,14 @@ public:
     Encoder(uint8_t i_pin,int32_t i_nm_per_pulse = 5000);
     ~Encoder(){};
     void set_nm_pp(int32_t i_nm_per_pulse);
-    void set_zero_sofware(){p_zero_val = p_pulse;};
+    void set_zero(){p_zero_val = p_pulse;};
     int32_t get_location() const;
     void set_software_inc(int8_t i_in);
     void set_hardware_inc(int8_t i_in);
     bool is_change();
     void hardware_enable(){p_software_encoder = false;}
     void hardware_disable(){p_software_encoder = true;}
+    void direction(bool i_dir){p_direction = i_dir;}
 
 private:
     int8_t p_pinA = -1;

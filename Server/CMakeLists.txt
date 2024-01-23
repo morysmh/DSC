@@ -12,8 +12,9 @@ add_executable(${PROJECT_NAME}
 	src/main.cpp
 	src/sensor.cpp
 	src/mcp2515.c
-	src/can.cpp
+	src/canserver.cpp
 	src/i2c-display-lib.c
+	src/clientmotor.cpp
 	)
 
 pico_add_extra_outputs(${PROJECT_NAME})

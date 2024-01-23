@@ -36,7 +36,7 @@ void CanCotroll::run()
     if(mcp2515_check_message())
     {
         mcp2515_get_message(&p_can);
-        if(p_can.id == p_address)
+        if((p_can.id == p_address) || (p_can.id == C_DSC_BRODCAST_ADDRESS_CAN))
             handle_message();
     }
     if(p_send_head == p_send_tail)
@@ -45,7 +45,7 @@ void CanCotroll::run()
         return;
     p_can.header.length = 8;
     p_can.header.rtr = 0;
-    p_can.id = 0xFF;
+    p_can.id = C_DSC_Server_ADDRESS_CAN;
     p_can.data[0] =((p_data[p_send_tail].i_val>>0ULL) & 0xFFULL);
     p_can.data[1] =((p_data[p_send_tail].i_val>>8ULL) & 0xFFULL);
     p_can.data[2] =((p_data[p_send_tail].i_val>>16ULL) & 0xFFULL);

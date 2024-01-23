@@ -62,14 +62,6 @@ int main()
     mcp2515_init(20);
     volatile uint64_t t_first = time_us_64() + 25000ULL;
     while(t_first > time_us_64());
-    tCAN r_test = {};
-    r_test.id = 2;
-    r_test.header.length = 8;
-    r_test.header.rtr = 0;
-    r_test.data[0] = 56;
-    r_test.data[1] = 6;
-    r_test.data[4] = 156;
-    mcp2515_send_message(&r_test);
     Client thisclient(PIN_TMC_STEP,
                     PIN_TMC__DIR,
                     PIN_SW___Pin,
@@ -85,7 +77,7 @@ int main()
     Encode_pio_init(PIN__A___Pin);
     while (1)
     {
-        for_test_only();
+        //for_test_only();
         thisclient.run();
         chagneLED(&Pico_LED);
         PICO_LED_Stat(Pico_LED.stat);
@@ -320,8 +312,8 @@ void for_test_only()
     switch (r_i)
     {
     case 0:
-        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_KP,2);
-        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_KI,0);
+        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_KP,4);
+        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_KI,1);
         ptr_client->software_fake_message(C_DSC_STEP_MOTOR_PID_ENABLE,1);
         ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_TOGO_Location,25000000ULL);
         ptr_client->software_fake_message(C_DSC_STEP_MOTOR_ENABLE,1);
@@ -329,8 +321,9 @@ void for_test_only()
         t_mili = time_us_64() + 6000000ULL;
         break;
     case 1:
-        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_TOGO_Location,5000ULL);
-        is_run = false;
+        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_TOGO_Location,-23000000LL);
+        //ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_TOGO_Location,5000ULL);
+        is_run = true;
         break;
     
     default:

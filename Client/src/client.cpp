@@ -67,7 +67,7 @@ void Client::run()
         write_to_can_bus(C_DSC_SENSOR_BOTTOM_READ_STATUS,o_bottom->get_sensor_stat());
         if(o_bottom->get_sensor_stat())
         {
-            o_encoder->set_zero_sofware();
+            o_encoder->set_zero();
             o_stepmotor->set_current_location(0ULL);
             o_stepmotor->set_togo_Location(0ULL);
         }
@@ -75,6 +75,8 @@ void Client::run()
     if(o_top->is_triged())
     {
         write_to_can_bus(C_DSC_SENSOR_TOP_READ_STATUS,o_top->get_sensor_stat());
+        if(o_top->get_sensor_stat())
+            write_to_can_bus(C_DSC_ENCODER_TOP_LOCATION, o_encoder->get_location());
     }
 }
 void Client::check_message()
@@ -84,11 +86,14 @@ void Client::check_message()
         return;
     switch (i_para)
     {
-    case C_DSC_STEP_MOTOR_SET_Default_Direction:
-        o_stepmotor->set_default_direction(!i_val);
-        break;
     case C_DSC_STEP_MOTOR_SET_DIV:
         o_stepmotor->set_div(i_val);
+        break;
+    case C_DSC_STEP_MOTOR_SET_low_us:
+        o_stepmotor->set_low_us(i_val);
+        break;
+    case C_DSC_STEP_MOTOR_SET_max_us:
+        o_stepmotor->set_MAX_us(i_val);
         break;
     case C_DSC_STEP_MOTOR_SET_KP:
         o_stepmotor->set_PID(i_val,0,0);
@@ -99,14 +104,11 @@ void Client::check_message()
     case C_DSC_STEP_MOTOR_SET_KD:
         o_stepmotor->set_PID(0,0,i_val);
         break;
-    case C_DSC_STEP_MOTOR_SET_low_us:
-        o_stepmotor->set_low_us(i_val);
-        break;
-    case C_DSC_STEP_MOTOR_SET_max_us:
-        o_stepmotor->set_MAX_us(i_val);
-        break;
     case C_DSC_STEP_MOTOR_SET_TOGO_Location:
         o_stepmotor->set_togo_Location(i_val);
+        break;
+    case C_DSC_STEP_MOTOR_SET_Default_Direction:
+        o_stepmotor->set_default_direction(!i_val);
         break;
     case C_DSC_STEP_MOTOR_ENABLE :
         o_stepmotor->enable();
@@ -120,12 +122,26 @@ void Client::check_message()
     case C_DSC_STEP_MOTOR_PID_DISABLE:
         o_stepmotor->pid_disable();
         break;
-    
+    case C_DSC_STEP_MOTOR_STOP:
+        o_stepmotor->stop();
+        break;
+    case C_DSC_STEP_MOTOR_START_MOVING:
+        o_stepmotor->start_moving();
+        break;
+    case C_DSC_STEP_MOTOR_TOGO_ON_COMMAND:
+        o_stepmotor->set_move_command_togo(i_val);
+        break;
     case C_DSC_SENSOR_TOP_ENABLE:
         o_top->enable();
         break;
+    case C_DSC_SENSOR_TOP_DISABLE:
+        o_top->disable();
+        break;
     case C_DSC_SENSOR_BOTTOM_ENABLE:
         o_bottom->enable();
+        break;
+    case C_DSC_SENSOR_BOTTOM_DISABLE:
+        o_bottom->disable();
         break;
     case C_DSC_SENSOR_TOP_READ_STATUS:
         write_to_can_bus(C_DSC_SENSOR_TOP_READ_STATUS,o_top->get_sensor_stat());
@@ -139,6 +155,18 @@ void Client::check_message()
         break;
     case C_DSC_ENCODER_HARDWARE_DISABLE:
         o_encoder->hardware_disable();
+        break;
+    case C_DSC_ENCODER_RESOLATION:
+        o_encoder->set_nm_pp(i_val);
+        break;
+    case C_DSC_ENCODER_DIRECTION:
+        o_encoder->direction(i_val);
+        break;
+    case C_DSC_ENCODER_LOCATION:
+        write_to_can_bus(C_DSC_ENCODER_LOCATION,o_encoder->get_location());
+        break;
+    case C_DSC_ENCODER_TOP_LOCATION:
+        //we are not store the top location so no action need here
         break;
     default:
         break;

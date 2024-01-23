@@ -35,10 +35,8 @@ void StepMotor::change_direction()
 }
 void StepMotor::run()
 {
-    if(p_mili_pid < time_us_64())
-    {
-        p_mili_pid = time_us_64() + c_pid_interval_us;
-    }
+    if(p_motor_en == false)
+        return;
     if(p_mili > time_us_64())
         return;
     calc_Pid();
@@ -56,7 +54,7 @@ void StepMotor::set_MAX_us(int32_t i_val)
     if(i_val < p_low_us_delay)
         i_val = p_low_us_delay;
     p_max_us_delay = i_val;
-    c_pid_Max = p_max_us_delay - p_low_us_delay;
+    p_max_minus_low  = p_max_us_delay - p_low_us_delay;
 }
 void StepMotor::set_low_us(int32_t i_val)
 {
@@ -64,7 +62,7 @@ void StepMotor::set_low_us(int32_t i_val)
     if(i_val > p_max_us_delay)
         i_val = p_max_us_delay;
     p_low_us_delay = i_val;
-    c_pid_Max = p_max_us_delay - p_low_us_delay;
+    p_max_minus_low  = p_max_us_delay - p_low_us_delay;
 }
 void StepMotor::set_PID(int32_t i_kp,int32_t i_ki,int32_t i_kd)
 {
@@ -91,7 +89,7 @@ StepMotor::StepMotor(uint8_t i_pinPulse,
     set_div(16);
     disable(); 
     set_MAX_us(10000L);
-    set_low_us(15);
+    set_low_us(8);
 
 }
 void StepMotor::set_div(uint8_t i_div)
@@ -147,14 +145,17 @@ void StepMotor::init_pid()
 void StepMotor::enable()
 {
     gpio_put(p_pinEN,false);
+    p_motor_en = true;
 
 }
 void StepMotor::disable()
 {
     gpio_put(p_pinEN,true);
+    p_motor_en = false;
 }
 void StepMotor::calc_Pid()
 {
+    int64_t r_tmp;
     if(p_pid_en == false)
     {
         p_step_Current_us_delay = p_low_us_delay;
@@ -163,23 +164,36 @@ void StepMotor::calc_Pid()
     e2 = e1;
     e1 = e0;
     e0 = p_togo_Location - p_current_location;
-    
-    if(e0 > 51)
-        e0 = 51;
-    if(e0 < -51)
-        e0 = -51;
-    
+    e0 /= 500;
+    if(e0 < 0)
+        e0 *= -1;
+    if(e0 > 100)
+        e0 = 100;
+    if(e0 < -50)
+        e0 = -50;
+    e0 -= 50;
     res_pid = res_pid +(k1 * e0)+(k2 * e1)+(k3 * e2);
-    
-    if(res_pid <= (c_pid_Max * -1))
-        res_pid = (c_pid_Max * -1);
+    if(res_pid <= 0)
+        res_pid = 0;
     if(res_pid > c_pid_Max)
         res_pid = c_pid_Max;
-    p_step_Current_us_delay = p_max_us_delay - res_pid;
-    if(res_pid < 0)
-        p_step_Current_us_delay = p_max_us_delay + res_pid;
+    r_tmp = (int64_t)p_max_minus_low * (int64_t)res_pid;
+    r_tmp /= (int64_t)c_pid_Max;
+    p_step_Current_us_delay = p_max_us_delay - r_tmp;
 }
 void StepMotor::set_togo_Location(int32_t i_togo)
 {
     p_togo_Location = i_togo;
+}
+void StepMotor::set_move_command_togo(int32_t i_togo)
+{
+    p_wait_start_command_togo = i_togo;
+}
+void StepMotor::stop()
+{
+    p_togo_Location = p_current_location;
+}
+void StepMotor::start_moving()
+{
+    p_togo_Location = p_wait_start_command_togo;
 }

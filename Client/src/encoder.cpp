@@ -37,6 +37,8 @@ void Encoder::set_hardware_inc(int8_t i_in)
 }
 int32_t Encoder::get_location() const
 {
+    if(p_software_encoder == true)
+        return((p_pulse - p_zero_val) * p_nm_pp);
     if(p_direction)
         return(((p_pulse - p_zero_val) * p_nm_pp) * (-1));
     return((p_pulse - p_zero_val) * p_nm_pp);

@@ -4,6 +4,9 @@
 #include "quadrature.pio.h"
 #include "pio_rotary_encoder.pio.h"
 #include "i2c-display-lib.h"
+#include "canserver.h"
+#include "clientmotor.h"
+#include "sensor.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -42,6 +45,7 @@ void Usart_init_main();
 void Usart_init_wifiTest();
 void Enable_A4498();
 void init_board_config();
+void handle_pc_communication(int32_t i_data,CanCotroll *dev);
 int main()
 {
     uint8_t b_sendtoPC[20]={};
@@ -63,6 +67,7 @@ int main()
     volatile uint64_t t_run_obj = 1000000;
     volatile uint8_t inx_mot = 0;
     char a_chrbuff[32] = {};
+    bool pc_active = false;
 
     CallBack_Parameter sendpara = {},para =  {},serverpara = {};
 
@@ -74,37 +79,88 @@ int main()
     stdio_init_all();
     Enable_A4498();
     init_board_config();
+    volatile uint64_t t_first = time_us_64() + 25000ULL;
+    while(t_first > time_us_64());
     add = Keys_Read_adderss();
     mcp2515_init(20);
     lcd_init(14,15);
     lcd_setCursor(0,0);
     lcd_print("raw data");
     tCAN r_res = {};
-    int32_t i_val = 0;
+    int32_t i_val = 0,i_para;
+    int8_t motNO = 0;
     char r_lcdbuff[80] = {};
+    CanCotroll dev_can(1);
+    clientmotor mot1(1,&dev_can);
+    clientmotor mot2(2,&dev_can);
+    clientmotor mot3(3,&dev_can);
+    clientmotor mot4(4,&dev_can);
+    clientmotor brodcast(C_DSC_BRODCAST_ADDRESS_CAN,&dev_can);
+    Sensor s_start(PIN__Z___Pin);
+    Sensor s_reset(PIN_SW___Pin);
+    s_reset.set_normal_stat(false);
+    s_start.set_normal_stat(false);
+    s_start.enable();
+    s_reset.enable();
+    brodcast.set_div(16);
+    brodcast.set_pid_val(8,3,0);
+    brodcast.pid_enable();
+    brodcast.enable();
+    mot2.set_max_us(15000LL);
+    mot2.set_low_us(30LL);
+    mot2.set_low_us(30LL);
+    mot2.set_stop_with_other_motor_sensor(2);
 
     while (1)
     {
-        if(mcp2515_check_message())
+        s_reset.run();
+        s_start.run();
+        dev_can.run();
+        mot1.run();
+        mot2.run();
+        mot3.run();
+        mot4.run();
+        chagneLED(&Pico_LED);
+        PICO_LED_Stat(Pico_LED.stat);
+        r_tmp_input = getchar_timeout_us(1);
+        if((r_tmp_input <= 255) && (r_tmp_input >= 0))
         {
-            mcp2515_get_message(&r_res);
-            i_val = 0;
-            i_val |= (((uint32_t)r_res.data[0])<<0ULL);
-            i_val |= (((uint32_t)r_res.data[1])<<8ULL);
-            i_val |= (((uint32_t)r_res.data[2])<<16ULL);
-            i_val |= (((uint32_t)r_res.data[3])<<24ULL);
-            sprintf(r_lcdbuff,"ad:%d p:%d    ",r_res.id,r_res.data[4]);
+            pc_active = true;
+            handle_pc_communication(r_tmp_input,&dev_can);
+        }
+        if(dev_can.read_new_msg(&i_para,&i_val,&motNO))
+        {
+            mot2.get_can_message(i_para,i_val,motNO);
+            sprintf(r_lcdbuff,"2:%d     ",mot2.get_location());
             lcd_setCursor(1,0);
             lcd_print(r_lcdbuff);
-            sprintf(r_lcdbuff,"from:%d    ",r_res.data[7]);
+            if(i_para == C_DSC_ENCODER_LOCATION)
+                continue;
+            sprintf(r_lcdbuff,"f:%d p:%d  ",motNO,i_para);
             lcd_setCursor(2,0);
             lcd_print(r_lcdbuff);
-            sprintf(r_lcdbuff,"v:%d    ",i_val);
+            sprintf(r_lcdbuff,"v:%d     ",i_val);
             lcd_setCursor(3,0);
             lcd_print(r_lcdbuff);
         }
-        chagneLED(&Pico_LED);
-        PICO_LED_Stat(Pico_LED.stat);
+        if(pc_active)
+            continue;
+        if(s_reset.is_triged())
+        {
+            if(s_reset.get_sensor_stat() == 1)
+            {
+                mot2.set_absolute_position(490000000LL);
+                mot2.start_moving();
+            }
+        }
+        if(s_start.is_triged())
+        {
+            if(s_start.get_sensor_stat() == 1)
+            {
+                mot2.home_motor();
+            }
+        }
+        
     }
 }
 void Usart_init_wifiTest()
@@ -324,4 +380,28 @@ void pio_irq_handler()
        //mainEncoder.set_software_inc(1); 
     }
     pio0_hw->irq = 3;
+}
+void handle_pc_communication(int32_t i_data,CanCotroll *dev)
+{
+    static volatile uint8_t r_buff[40] = {};
+    static volatile uint8_t r_indx = 0;
+    static volatile uint64_t t_mili = 0;
+    static volatile int32_t i_val = 0;
+    const uint64_t c_delay_Between_Command = 10000ULL;
+    if(t_mili < time_us_64())
+        r_indx = 0;
+    if(r_indx >= 16)
+        r_indx = 0;
+    t_mili = time_us_64() + c_delay_Between_Command;
+    r_buff[r_indx] = (i_data & 0xFFLL);
+    r_indx++;
+    if(r_indx < 9)
+        return;
+    r_indx = 0;
+    i_val = 0;
+    i_val |= (((uint32_t)r_buff[2])<<0ULL);
+    i_val |= (((uint32_t)r_buff[3])<<8ULL);
+    i_val |= (((uint32_t)r_buff[4])<<16ULL);
+    i_val |= (((uint32_t)r_buff[5])<<24ULL);
+    dev->send_data(r_buff[1],i_val,r_buff[0]);
 }

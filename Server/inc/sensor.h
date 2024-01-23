@@ -1,4 +1,6 @@
 #include "define.h"
+#ifndef __Sensor__Class__
+#define __Sensor__Class__
 class Sensor
 {
 public:
@@ -22,6 +24,8 @@ private:
     Sensor::SensorType p_sensorType;
     bool p_normal_stat = false;
     bool p_current_stat = false;
-    bool p_is_trig = true;
+    bool p_is_trig = false;
     bool p_is_enable = false;
 };
+
+#endif
