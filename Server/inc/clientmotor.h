@@ -6,11 +6,15 @@ class clientmotor
 {
 public:
     clientmotor(uint8_t add,CanCotroll *ptrcan);
+    void set_sensor_bottom_normal_stat(bool i_val);
+    void set_sensor_top_normal_stat(bool i_val);
     void set_div(int32_t i_div);
     void set_low_us(int32_t i_speed);
     void set_max_us(int32_t i_speed);
     void set_encoder_nmPP(int32_t i_nm);
     void set_encoder_dir(bool i_val);
+    void enable_encoder();
+    void disable_encoder();
     void stop();
     void enable();
     void disable();
@@ -19,7 +23,6 @@ public:
     void start_moving();
     void set_motor_dir(bool i_dir);
     void set_pid_val(int32_t i_kp,int32_t i_ki,int32_t i_kd);
-    void immidiate_absoulute_move(int32_t i_pos);
     void set_absolute_position(int32_t i_pos);
     void set_releative_position(int32_t i_pos);
     void get_can_message(int8_t i_para,int32_t i_val,uint8_t motNO);
@@ -43,6 +46,7 @@ private:
         wait_for_readBack,
         home_position
     }Homing_enum;
+    void immidiate_absoulute_move(int32_t i_pos);
     void home_sequencer();
     void read_pos();
     bool is_near();
@@ -56,19 +60,20 @@ private:
     int32_t kp = 0,ki = 0,kd = 0;
     int32_t p_togo = 0,p_current = 0;
     int64_t p_mili_homeSensor = 0;
+    int64_t p_mili_home_sensor_refresh = 0;
     bool p_topSensorTrig = false;
-    bool p_def_motor_directin = true;
+    bool p_def_motor_directin = false;
     bool p_motor_en = false;
     bool p_pid_en = false;
     
     bool p_sensor_top_en = false;
     bool p_sensor_bottom_en = true;
     
-    bool p_def_encoder_direction = false;
+    bool p_def_encoder_direction = true;
     bool p_encoder_en = false;
     CanCotroll *ptr_can;
     int64_t p_read_loc_mili = 0;
-    const int64_t c_interval_location_read_us =  700000LL;
+    int64_t c_interval_location_read_us =  1243106LL;
     bool p_homeSensor_Stat = false;
 };
 

@@ -149,6 +149,12 @@ void Client::check_message()
     case C_DSC_SENSOR_BOTTOM_READ_STATUS:
         write_to_can_bus(C_DSC_SENSOR_BOTTOM_READ_STATUS,o_bottom->get_sensor_stat());
         break;
+    case C_DSC_SENSOR_BOTTOM_DEFAULT_VALUE:
+        o_bottom->set_normal_stat(i_val);
+        break;
+    case C_DSC_SENSOR_TOP_DEFAULT_VALUE:
+        o_top->set_normal_stat(i_val);
+        break;
     
     case C_DSC_ENCODER_HARDWARE_ENABLE :
         o_encoder->hardware_enable();

@@ -4,6 +4,7 @@ clientmotor::clientmotor(uint8_t add,CanCotroll *ptrcan)
 {
     p_address = add;
     ptr_can = ptrcan;
+    c_interval_location_read_us = 823241LL + (p_address * 25000LL);
     if(p_address == C_DSC_BRODCAST_ADDRESS_CAN)
         return;
     if(p_address <= 0)
@@ -51,10 +52,19 @@ void clientmotor::set_encoder_dir(bool i_val)
     if(p_def_encoder_direction == i_val)
         return;
     p_def_encoder_direction = i_val;
-    ptr_can->send_data(C_DSC_ENCODER_DIRECTION,p_encoder_nm,p_address);
+    ptr_can->send_data(C_DSC_ENCODER_DIRECTION,p_def_encoder_direction,p_address);
+}
+void clientmotor::enable_encoder()
+{
+    ptr_can->send_data(C_DSC_ENCODER_HARDWARE_ENABLE,1,p_address);
+}
+void clientmotor::disable_encoder()
+{
+    ptr_can->send_data(C_DSC_ENCODER_HARDWARE_DISABLE,1,p_address);
 }
 void clientmotor::stop()
 {
+    p_homeStat = normal_operation;
     ptr_can->send_data(C_DSC_STEP_MOTOR_STOP,1,p_address);
 }
 void clientmotor::enable()
@@ -108,6 +118,11 @@ void clientmotor::immidiate_absoulute_move(int32_t i_pos)
 }
 void clientmotor::set_absolute_position(int32_t i_pos)
 {
+    if(p_homeStat != normal_operation)
+    {
+        p_homeStat = normal_operation;
+        set_low_us(p_def_low_us);
+    }
     p_togo = i_pos;
     p_togo /= p_encoder_nm;
     p_togo *= p_encoder_nm;
@@ -129,6 +144,11 @@ void clientmotor::home_motor()
 }
 void clientmotor::home_sequencer()
 {
+    if((p_mili_home_sensor_refresh < time_us_64()) && (p_homeStat != normal_operation))
+    {
+        p_mili_home_sensor_refresh = time_us_64() + 2012431LL;
+        ptr_can->send_data(C_DSC_SENSOR_BOTTOM_READ_STATUS,1,p_address);
+    }
     switch (p_homeStat)
     {
     case normal_operation:
@@ -158,10 +178,13 @@ void clientmotor::home_sequencer()
         if(is_near() == false)
             break;
         p_homeStat = Home_Slowly;
-        set_low_us(p_high / 4);
+        set_low_us(p_high - 20LL);
         immidiate_absoulute_move(-400000000LL);
+        p_mili_homeSensor = time_us_64() + 500000LL;
         break;
     case Home_Slowly:
+        if (p_mili_homeSensor > time_us_64())
+            break;
         if(p_homeSensor_Stat != true)
             break;
         set_low_us(p_def_low_us);
@@ -271,4 +294,12 @@ void clientmotor::default_low_us(int32_t i_speed)
     if(i_speed <= 5)
         i_speed = 5;
     p_def_low_us = i_speed;
+}
+void clientmotor::set_sensor_bottom_normal_stat(bool i_val)
+{
+    ptr_can->send_data(C_DSC_SENSOR_BOTTOM_DEFAULT_VALUE,i_val,p_address);
+}
+void clientmotor::set_sensor_top_normal_stat(bool i_val)
+{
+    ptr_can->send_data(C_DSC_SENSOR_TOP_DEFAULT_VALUE,i_val,p_address);
 }

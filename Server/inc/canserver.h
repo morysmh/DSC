@@ -22,11 +22,12 @@ private:
     uint8_t p_send_head = 0,p_send_tail = 0;
     uint8_t p_rx_head = 0,p_rx_tail = 0;
     const uint8_t c_buff_size = 75;
-    storage p_data[80] = {};
-    storage p_rx[80] = {};
+    storage p_data[150] = {};
+    storage p_rx[150] = {};
     tCAN p_can;
     int64_t p_mili = 0;
-    const int64_t c_interval = 10000LL;
+    const int64_t c_interval = 3128LL;
+    uint8_t p_sendtwice = 0;
 };
 
 #endif

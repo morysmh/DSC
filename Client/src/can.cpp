@@ -52,7 +52,8 @@ void CanCotroll::run()
     p_can.data[3] =((p_data[p_send_tail].i_val>>24ULL) & 0xFFULL);
     p_can.data[4] =((p_data[p_send_tail].i_para) & 0xFFULL);
     p_can.data[7] =(p_address & 0xFFULL);
-    mcp2515_send_message(&p_can);
+    if(mcp2515_send_message(&p_can) == false)
+        return;
     p_send_tail++;
     if(p_send_tail >= c_buff_size)
         p_send_tail = 0;
