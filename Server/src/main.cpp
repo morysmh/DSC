@@ -91,11 +91,11 @@ int main()
     int8_t motNO = 0;
     char r_lcdbuff[80] = {};
     CanCotroll dev_can(1);
-    clientmotor mot1(1,&dev_can);
-    clientmotor mot2(2,&dev_can);
-    clientmotor mot3(3,&dev_can);
-    clientmotor mot4(4,&dev_can);
-    clientmotor brodcast(C_DSC_BRODCAST_ADDRESS_CAN,&dev_can);
+    virtualMotor mot1(1,&dev_can);
+    virtualMotor mot2(2,&dev_can);
+    virtualMotor mot3(3,&dev_can);
+    virtualMotor mot4(4,&dev_can);
+    virtualMotor brodcast(C_DSC_BRODCAST_ADDRESS_CAN,&dev_can);
     Sensor s_start(PIN__Z___Pin);
     Sensor s_reset(PIN_SW___Pin);
     s_reset.set_normal_stat(false);
@@ -103,43 +103,40 @@ int main()
     s_start.enable();
     s_reset.enable();
 
-    brodcast.set_div(16);
-    brodcast.set_pid_val(7,2,0);
-    brodcast.pid_enable();
-    brodcast.enable();
+    brodcast.setDiv(16);
+    brodcast.setPid(7,2,0);
+    brodcast.setEnablePID(true);
+    brodcast.setEnableMotor(true);
 
-    mot1.enable_encoder();
-    mot1.set_sensor_bottom_normal_stat(false);
-    mot1.set_motor_dir(true);
-    mot1.set_encoder_dir(false);
-    mot1.set_max_us(1000LL);
-    mot1.set_low_us(200LL);
-    mot1.default_low_us(200LL);
+    mot1.setEnableEncoder(true);
+    mot1.setSensorBottomNormalStat(false);
+    mot1.setDir(true);
+    mot1.setDirEncoder(false);
+    mot1.setSpeedUS(200LL,1000LL);
+    mot1.setDefaultLow(200LL);
 
-    mot2.set_motor_dir(true);
-    mot2.set_encoder_dir(false);
-    mot2.set_max_us(1000LL);
-    mot2.set_low_us(15LL);
-    mot2.default_low_us(15LL);
-    mot2.set_stop_with_other_motor_sensor(2);
-    mot2.enable_encoder();
+    mot2.setEnableEncoder(true);
+    mot2.setDir(true);
+    mot2.setDirEncoder(false);
+    mot2.setSpeedUS(15LL,1000LL);
+    mot2.setDefaultLow(15LL);
+    mot2.setOtherMotorSensorStop(2);
 
-    mot3.enable_encoder();
-    mot3.set_stop_with_other_motor_sensor(2);
-    mot3.set_sensor_bottom_normal_stat(false);
-    mot3.set_motor_dir(true);
-    mot3.set_encoder_dir(false);
-    mot3.set_max_us(1500LL);
-    mot3.set_low_us(45LL);
-    mot3.default_low_us(45LL);
+    mot3.setEnableEncoder(true);
+    mot3.setSensorBottomNormalStat(false);
+    mot3.setDir(true);
+    mot3.setDirEncoder(false);
+    mot3.setSpeedUS(45LL,1000LL);
+    mot3.setDefaultLow(45LL);
+    mot3.setOtherMotorSensorStop(2);
 
-    mot4.set_encoder_nmPP(150LL);
-    mot4.set_sensor_bottom_normal_stat(false);
-    mot4.set_motor_dir(true);
-    mot4.set_encoder_dir(false);
-    mot4.set_max_us(1000LL);
-    mot4.set_low_us(15LL);
-    mot4.default_low_us(15LL);
+    mot4.setEncoder_nm(150LL);
+    mot4.setSensorBottomNormalStat(false);
+    mot4.setDir(true);
+    mot4.setDirEncoder(false);
+    mot4.setSpeedUS(45LL,1000LL);
+    mot4.setDefaultLow(45LL);
+
     while (1)
     {
         s_reset.run();
@@ -159,15 +156,15 @@ int main()
         }
         if(dev_can.read_new_msg(&i_para,&i_val,&motNO))
         {
-            mot1.get_can_message(i_para,i_val,motNO);
-            mot2.get_can_message(i_para,i_val,motNO);
-            mot3.get_can_message(i_para,i_val,motNO);
-            mot4.get_can_message(i_para,i_val,motNO);
-            sprintf(r_lcdbuff,"1:%d 2:%d       ",mot1.get_location(),mot2.get_location());
+            mot1.readCAN(motNO,i_para,i_val);
+            mot2.readCAN(motNO,i_para,i_val);
+            mot3.readCAN(motNO,i_para,i_val);
+            mot4.readCAN(motNO,i_para,i_val);
+            sprintf(r_lcdbuff,"1:%d 2:%d       ",mot1.getLocation(),mot2.getLocation());
             r_lcdbuff[19] = 0;
             lcd_setCursor(0,0);
             lcd_print(r_lcdbuff);
-            sprintf(r_lcdbuff,"3:%d 4:%d       ",mot3.get_location(),mot4.get_location());
+            sprintf(r_lcdbuff,"3:%d 4:%d       ",mot3.getLocation(),mot4.getLocation());
             r_lcdbuff[19] = 0;
             lcd_setCursor(1,0);
             lcd_print(r_lcdbuff);
@@ -184,22 +181,21 @@ int main()
         {
             if(s_reset.get_sensor_stat() == 1)
             {
-                mot1.home_motor();
-                mot2.home_motor();
-                mot3.home_motor();
-                mot4.home_motor();
+                mot1.GoHome();
+                mot2.GoHome();
+                mot3.GoHome();
+                mot4.GoHome();
             }
         }
         if(s_start.is_triged())
         {
             if(s_start.get_sensor_stat() == 1)
             {
-                mot1.set_absolute_position(550000LL);
-                mot1.set_absolute_position(550000LL);
-                mot2.set_absolute_position(550000LL);
-                mot3.set_absolute_position(550000LL);
-                mot4.set_absolute_position(550000LL);
-                brodcast.start_moving();
+                mot1.setToGo(550000LL);
+                mot2.setToGo(550000LL);
+                mot3.setToGo(550000LL);
+                mot4.setToGo(550000LL);
+                //brodcast.start_moving();
                 //brodcast.stop();
             }
         }
