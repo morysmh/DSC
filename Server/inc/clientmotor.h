@@ -30,24 +30,31 @@ public:
 
     void run();
 private:
+    void retransmit_data();
+    void communicate_to_can(int8_t para,int32_t val);
     bool is_near();
     void readPos();
     void readSensor();
     int32_t pEncoder_nm = 500LL;
     int32_t pCurrentPosition = 0;
     int32_t pToGoPosition = 0;
-    int32_t pLowDelayPulse = 500LL;
-    int32_t pHighDelayPulse = 1500LL;
+    int32_t pLowDelayPulse = 5000LL;
+    int32_t pHighDelayPulse = 15000LL;
     int32_t pDefLow = 500LL;
     bool pMotorEnable = false;
     bool pBottomSensorStat = false;
+    bool pBottomSensorStat_LastStat = false;
     bool pTOPSensorTrig = false;
     CanCotroll *ptr_can;
     int8_t pAddressMotor = 0;
     int64_t miliReadPos = 0;
     int64_t miliSensorRead = 0;
-    const int64_t cIntervalReadPos = 1243106LL;
+    const int64_t cIntervalReadPos = 443106LL;
     int8_t pOtherMotorSensorStop = 0;
+    //bool pSpeedChange = false;
+    //bool pToGoChange = false;
+    //bool pSettingChange = false;
+    //int64_t miliCheck
 };
 
 #endif

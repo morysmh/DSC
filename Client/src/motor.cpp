@@ -164,7 +164,7 @@ void StepMotor::calc_Pid()
     e2 = e1;
     e1 = e0;
     e0 = p_togo_Location - p_current_location;
-    e0 /= 500;
+    e0 /= 50;
     if(e0 < 0)
         e0 *= -1;
     if(e0 > 100)

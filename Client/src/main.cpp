@@ -59,7 +59,7 @@ int main()
     Enable_A4498();
     init_board_config();
     add = Keys_Read_adderss();
-    mcp2515_init(20);
+    mcp2515_init(14);
     volatile uint64_t t_first = time_us_64() + 25000ULL;
     while(t_first > time_us_64());
     Client thisclient(PIN_TMC_STEP,
@@ -312,15 +312,45 @@ void for_test_only()
     switch (r_i)
     {
     case 0:
-        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_KP,4);
-        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_KI,1);
+        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_DIV,16);
+        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_Default_Direction,false);
+        ptr_client->software_fake_message(C_DSC_ENCODER_RESOLATION,500LL);
+        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_KP,8);
+        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_KI,2);
+        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_KD,0);
         ptr_client->software_fake_message(C_DSC_STEP_MOTOR_PID_ENABLE,1);
-        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_TOGO_Location,25000000ULL);
         ptr_client->software_fake_message(C_DSC_STEP_MOTOR_ENABLE,1);
+        ptr_client->software_fake_message(C_DSC_ENCODER_HARDWARE_ENABLE,1);
+        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_Default_Direction,true);
+        ptr_client->software_fake_message(C_DSC_ENCODER_DIRECTION,false);
+        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_low_us,15LL);
+        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_max_us,1500LL);
+
+
+
+        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_TOGO_Location,120000LL);
         r_i = 1;
-        t_mili = time_us_64() + 6000000ULL;
+        t_mili = time_us_64() + 12000000ULL;
         break;
     case 1:
+        r_i = 2;
+        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_DIV,16);
+        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_Default_Direction,false);
+        ptr_client->software_fake_message(C_DSC_ENCODER_RESOLATION,500LL);
+        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_KP,8);
+        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_KI,2);
+        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_KD,0);
+        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_PID_ENABLE,1);
+        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_ENABLE,1);
+        ptr_client->software_fake_message(C_DSC_ENCODER_HARDWARE_ENABLE,1);
+        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_Default_Direction,true);
+        ptr_client->software_fake_message(C_DSC_ENCODER_DIRECTION,false);
+        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_low_us,15LL);
+        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_max_us,1500LL);
+        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_low_us,35LL);
+        t_mili = time_us_64() + 9000ULL;
+        break;
+    case 2:
         ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_TOGO_Location,-23000000LL);
         //ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_TOGO_Location,5000ULL);
         is_run = true;

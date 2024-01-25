@@ -13,7 +13,10 @@ virtualMotor::virtualMotor(uint8_t add,CanCotroll *ptrcan)
     setDiv(16);
     setDir(false);
     setEnableMotor(true);
-    setEncoder_nm(500LL);
+    setEncoder_nm(5000LL);
+    setPid(8,2,0);
+    setEnablePID(true);
+    stop();
 }
 void virtualMotor::setDiv(int32_t iDiv)
 {
@@ -24,7 +27,7 @@ void virtualMotor::setDiv(int32_t iDiv)
     case 4:
     case 8:
     case 16:
-        ptr_can->send_data(C_DSC_STEP_MOTOR_SET_DIV,iDiv,pAddressMotor);
+        communicate_to_can(C_DSC_STEP_MOTOR_SET_DIV,iDiv);
         break;
     default:
         break;
@@ -32,58 +35,71 @@ void virtualMotor::setDiv(int32_t iDiv)
 }
 void virtualMotor::setPid(int32_t kp,int32_t ki,int32_t kd)
 {
-    ptr_can->send_data(C_DSC_STEP_MOTOR_SET_KP,kp,pAddressMotor);
-    ptr_can->send_data(C_DSC_STEP_MOTOR_SET_KI,ki,pAddressMotor);
-    ptr_can->send_data(C_DSC_STEP_MOTOR_SET_KD,kd,pAddressMotor);
+    communicate_to_can(C_DSC_STEP_MOTOR_SET_KP,kp);
+    communicate_to_can(C_DSC_STEP_MOTOR_SET_KI,ki);
+    communicate_to_can(C_DSC_STEP_MOTOR_SET_KD,kd);
 }
 void virtualMotor::setEnableMotor(bool iVal)
 {
     pMotorEnable = iVal;
     if(pMotorEnable == true)
     {
-        ptr_can->send_data(C_DSC_STEP_MOTOR_ENABLE,1,pAddressMotor);
+        communicate_to_can(C_DSC_STEP_MOTOR_ENABLE,1);
         return;
     }
-    ptr_can->send_data(C_DSC_STEP_MOTOR_DISABLE,1,pAddressMotor);
+    communicate_to_can(C_DSC_STEP_MOTOR_DISABLE,1);
 }
 void virtualMotor::setDir(bool iVal)
 {
-    ptr_can->send_data(C_DSC_STEP_MOTOR_SET_Default_Direction,iVal,pAddressMotor);
+    communicate_to_can(C_DSC_STEP_MOTOR_SET_Default_Direction,iVal);
 }
 void virtualMotor::setDirEncoder(bool iVal)
 {
-    ptr_can->send_data(C_DSC_ENCODER_DIRECTION,iVal,pAddressMotor);
+    communicate_to_can(C_DSC_ENCODER_DIRECTION,iVal);
 }
 void virtualMotor::setEnablePID(bool iVal)
 {
     if(iVal == true)
     {
-        ptr_can->send_data(C_DSC_STEP_MOTOR_PID_ENABLE,1,pAddressMotor);
+        communicate_to_can(C_DSC_STEP_MOTOR_PID_ENABLE,1);
         return;
     }
-    ptr_can->send_data(C_DSC_STEP_MOTOR_PID_DISABLE,1,pAddressMotor);
+    communicate_to_can(C_DSC_STEP_MOTOR_PID_DISABLE,1);
 }
 void virtualMotor::setEnableEncoder(bool iVal)
 {
     if(iVal == true)
     {
-        ptr_can->send_data(C_DSC_ENCODER_HARDWARE_ENABLE,1,pAddressMotor);
+        communicate_to_can(C_DSC_ENCODER_HARDWARE_ENABLE,1);
         return;
     }
-    ptr_can->send_data(C_DSC_ENCODER_HARDWARE_DISABLE,1,pAddressMotor);
+    communicate_to_can(C_DSC_ENCODER_HARDWARE_DISABLE,1);
 }
 void virtualMotor::setSpeedUS(int32_t iLow,int32_t iHigh)
 {
+    if(iLow <= 10LL)
+        iLow = 10LL;
+    if(iLow >= 65530LL) //Limit us to 16 bit variable
+        iLow = 65530LL;
+
+    if(iHigh <= 10LL)
+        iHigh = 10LL;
+    if(iHigh >= 65530LL) //Limit us to 16 bit
+        iHigh = 65530LL;
+    if(pLowDelayPulse != iLow)
+        communicate_to_can(C_DSC_STEP_MOTOR_SET_low_us,iLow);
+    if(pHighDelayPulse != iHigh)
+        communicate_to_can(C_DSC_STEP_MOTOR_SET_max_us,iHigh);
     pLowDelayPulse = iLow;
     pHighDelayPulse = iHigh;
-    ptr_can->send_data(C_DSC_STEP_MOTOR_SET_max_us,pLowDelayPulse,pAddressMotor);
-    ptr_can->send_data(C_DSC_STEP_MOTOR_SET_low_us,pHighDelayPulse,pAddressMotor);
 
 }
 void virtualMotor::setDefaultLow(int32_t iVal)
 {
     if(iVal <= 10)
         return;
+    if(iVal >= 65530)
+        iVal = 65530;
     pDefLow = iVal;
 }
 void virtualMotor::setOtherMotorSensorStop(int8_t iMotNo)
@@ -99,19 +115,20 @@ void virtualMotor::setToGo(int32_t itogo)
     pToGoPosition = itogo;
     pToGoPosition /= pEncoder_nm;
     pToGoPosition *= pEncoder_nm;
-    ptr_can->send_data(C_DSC_STEP_MOTOR_SET_TOGO_Location,pToGoPosition,pAddressMotor);
+    communicate_to_can(C_DSC_STEP_MOTOR_TOGO_ON_COMMAND,pToGoPosition);
+    communicate_to_can(C_DSC_STEP_MOTOR_START_MOVING,1);
 }
 void virtualMotor::stop()
 {
-    ptr_can->send_data(C_DSC_STEP_MOTOR_STOP,1,pAddressMotor);
+    communicate_to_can(C_DSC_STEP_MOTOR_STOP,1);
 }
 void virtualMotor::setSensorBottomNormalStat(bool i_val)
 {
-    ptr_can->send_data(C_DSC_SENSOR_BOTTOM_DEFAULT_VALUE,i_val,pAddressMotor);
+    communicate_to_can(C_DSC_SENSOR_BOTTOM_DEFAULT_VALUE,i_val);
 }
 void virtualMotor::setSensorTOPNormalStat(bool i_val)
 {
-    ptr_can->send_data(C_DSC_SENSOR_TOP_DEFAULT_VALUE,i_val,pAddressMotor);
+    communicate_to_can(C_DSC_SENSOR_TOP_DEFAULT_VALUE,i_val);
 }
 bool virtualMotor::isBusy()
 {
@@ -143,7 +160,10 @@ void virtualMotor::readCAN(int8_t motNO,int8_t iPara,int32_t iVal)
     {
     case C_DSC_SENSOR_BOTTOM_READ_STATUS:
         pBottomSensorStat = !!iVal;
-        if(iVal == 0)
+        if(pBottomSensorStat_LastStat == pBottomSensorStat)
+            break;
+        pBottomSensorStat_LastStat = pBottomSensorStat;
+        if(pBottomSensorStat_LastStat == 0)
             break;
         pToGoPosition = 0;
         pCurrentPosition = 0;
@@ -163,6 +183,14 @@ void virtualMotor::readCAN(int8_t motNO,int8_t iPara,int32_t iVal)
     }
 }
 
+void virtualMotor::retransmit_data()
+{
+
+}
+void virtualMotor::communicate_to_can(int8_t ipara,int32_t ival)
+{
+    ptr_can->send_data(ipara,ival,pAddressMotor);
+}
 void virtualMotor::run()
 {
     readPos();
@@ -175,16 +203,16 @@ void virtualMotor::readPos()
     miliReadPos = time_us_64() + cIntervalReadPos;
     if(pToGoPosition == pCurrentPosition)
         miliReadPos = time_us_64() + (cIntervalReadPos * 10);
-    ptr_can->send_data(C_DSC_ENCODER_LOCATION,1,pAddressMotor);
+    communicate_to_can(C_DSC_ENCODER_LOCATION,1);
 }
 void virtualMotor::readSensor()
 {
     if (miliSensorRead > time_us_64())
         return;
     miliSensorRead = time_us_64() + cIntervalReadPos;
-    if(pToGoPosition == 0)
+    if(pToGoPosition >= 0)
         miliSensorRead = time_us_64() + (cIntervalReadPos * 10);
-    ptr_can->send_data(C_DSC_SENSOR_BOTTOM_READ_STATUS,1,pAddressMotor);
+    communicate_to_can(C_DSC_SENSOR_BOTTOM_READ_STATUS,1);
 }
 
 void virtualMotor::setEncoder_nm(int32_t inm)
@@ -194,7 +222,7 @@ void virtualMotor::setEncoder_nm(int32_t inm)
     if(inm == pEncoder_nm)
         return;
     pEncoder_nm = inm;
-    ptr_can->send_data(C_DSC_ENCODER_RESOLATION,pEncoder_nm,pAddressMotor);
+    communicate_to_can(C_DSC_ENCODER_RESOLATION,pEncoder_nm);
 }
 
 bool virtualMotor::is_near()
@@ -208,5 +236,7 @@ bool virtualMotor::is_near()
 }
 void virtualMotor::GoHome()
 {
+    if(pBottomSensorStat_LastStat == true)
+        return;
     setToGo(-500000000LL);
 }

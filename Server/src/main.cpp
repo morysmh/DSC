@@ -46,30 +46,23 @@ void Usart_init_wifiTest();
 void Enable_A4498();
 void init_board_config();
 void handle_pc_communication(int32_t i_data,CanCotroll *dev);
+void for_test_only();
+void lcd_refresh_data(int32_t mot1,int32_t mot2,int32_t mot3,int32_t mot4);
 int main()
 {
-    uint8_t b_sendtoPC[20]={};
+    int64_t t_mili_reset_interval = 0;
+    const int64_t c_reset_interval = 2500000LL;
     LED_Interval Pico_LED;
-    volatile uint64_t microdelay_500ms = 0, micro_picoled = 0, microdelay_in_state = 0;
-    volatile int64_t t_nexpos = 0;
-    volatile int64_t t_encoder = 0;
-    volatile uint64_t t_send_can = 0;
-    volatile int64_t stp = 1;
     volatile int8_t add = 0;
-    volatile int32_t r_encoder = 0;
 
     volatile int32_t r_tmp_input = 0;
-    volatile int8_t r_inputdata[32] = {};
-    volatile uint8_t r_input_indx = 0;
-    volatile int64_t t_inputdata = 0;
-    volatile const int64_t c_delay_Between_Command = 3000;
 
-    volatile uint64_t t_run_obj = 1000000;
-    volatile uint8_t inx_mot = 0;
-    char a_chrbuff[32] = {};
+    char r_lcdbuff[80] = {};
     bool pc_active = false;
+    volatile uint64_t t_first = time_us_64() + 25000ULL;
+    int32_t i_val = 0,i_para;
+    int8_t motNO = 0;
 
-    CallBack_Parameter sendpara = {},para =  {},serverpara = {};
 
     Pico_LED.OFF = 340000;
     Pico_LED._ON = 200000;
@@ -79,17 +72,14 @@ int main()
     stdio_init_all();
     Enable_A4498();
     init_board_config();
-    volatile uint64_t t_first = time_us_64() + 25000ULL;
     while(t_first > time_us_64());
     add = Keys_Read_adderss();
-    mcp2515_init(20);
+    mcp2515_init(14);
     lcd_init(14,15);
     lcd_setCursor(0,0);
     lcd_print("raw data");
-    tCAN r_res = {};
-    int32_t i_val = 0,i_para;
-    int8_t motNO = 0;
-    char r_lcdbuff[80] = {};
+
+    //for_test_only();
     CanCotroll dev_can(1);
     virtualMotor mot1(1,&dev_can);
     virtualMotor mot2(2,&dev_can);
@@ -103,13 +93,8 @@ int main()
     s_start.enable();
     s_reset.enable();
 
-    brodcast.setDiv(16);
-    brodcast.setPid(7,2,0);
-    brodcast.setEnablePID(true);
-    brodcast.setEnableMotor(true);
-
     mot1.setEnableEncoder(true);
-    mot1.setSensorBottomNormalStat(false);
+    mot1.setSensorBottomNormalStat(true);
     mot1.setDir(true);
     mot1.setDirEncoder(false);
     mot1.setSpeedUS(200LL,1000LL);
@@ -118,27 +103,30 @@ int main()
     mot2.setEnableEncoder(true);
     mot2.setDir(true);
     mot2.setDirEncoder(false);
-    mot2.setSpeedUS(15LL,1000LL);
-    mot2.setDefaultLow(15LL);
+    mot2.setSpeedUS(245LL,1000LL);
+    mot2.setDefaultLow(245LL);
     mot2.setOtherMotorSensorStop(2);
 
     mot3.setEnableEncoder(true);
     mot3.setSensorBottomNormalStat(false);
     mot3.setDir(true);
     mot3.setDirEncoder(false);
-    mot3.setSpeedUS(45LL,1000LL);
-    mot3.setDefaultLow(45LL);
+    mot3.setSpeedUS(245LL,1000LL);
+    mot3.setDefaultLow(245LL);
     mot3.setOtherMotorSensorStop(2);
 
-    mot4.setEncoder_nm(150LL);
+    mot4.setEncoder_nm(1500LL);
     mot4.setSensorBottomNormalStat(false);
     mot4.setDir(true);
     mot4.setDirEncoder(false);
-    mot4.setSpeedUS(45LL,1000LL);
-    mot4.setDefaultLow(45LL);
+    mot4.setSpeedUS(245LL,1000LL);
+    mot4.setDefaultLow(245LL);
 
+    t_first = time_us_64() + 400000LL;
+    while(t_first > time_us_64());
     while (1)
     {
+        lcd_refresh_data(mot1.getLocation(),mot2.getLocation(),mot3.getLocation(),mot4.getLocation());
         s_reset.run();
         s_start.run();
         dev_can.run();
@@ -160,20 +148,6 @@ int main()
             mot2.readCAN(motNO,i_para,i_val);
             mot3.readCAN(motNO,i_para,i_val);
             mot4.readCAN(motNO,i_para,i_val);
-            sprintf(r_lcdbuff,"1:%d 2:%d       ",mot1.getLocation(),mot2.getLocation());
-            r_lcdbuff[19] = 0;
-            lcd_setCursor(0,0);
-            lcd_print(r_lcdbuff);
-            sprintf(r_lcdbuff,"3:%d 4:%d       ",mot3.getLocation(),mot4.getLocation());
-            r_lcdbuff[19] = 0;
-            lcd_setCursor(1,0);
-            lcd_print(r_lcdbuff);
-            if(i_para == C_DSC_ENCODER_LOCATION)
-                continue;
-            sprintf(r_lcdbuff,"f:%d p:%d :%d      ",motNO,i_para,i_val);
-            r_lcdbuff[19] = 0;
-            lcd_setCursor(2,0);
-            lcd_print(r_lcdbuff);
         }
         if(pc_active)
             continue;
@@ -181,6 +155,9 @@ int main()
         {
             if(s_reset.get_sensor_stat() == 1)
             {
+                if(t_mili_reset_interval > time_us_64() )
+                    continue;
+                t_mili_reset_interval = time_us_64() + c_reset_interval;
                 mot1.GoHome();
                 mot2.GoHome();
                 mot3.GoHome();
@@ -191,10 +168,10 @@ int main()
         {
             if(s_start.get_sensor_stat() == 1)
             {
-                mot1.setToGo(550000LL);
-                mot2.setToGo(550000LL);
-                mot3.setToGo(550000LL);
-                mot4.setToGo(550000LL);
+                mot1.setToGo(950000LL);
+                mot2.setToGo(950000LL);
+                mot3.setToGo(950000LL);
+                mot4.setToGo(950000LL);
                 //brodcast.start_moving();
                 //brodcast.stop();
             }
@@ -411,7 +388,6 @@ void pio_irq_handler()
 {
     if(pio0_hw->irq & 1)    
     {
-       //TODO: add irq handle
        //mainEncoder.set_software_inc(-1); 
     }
     if(pio0_hw->irq & 2)
@@ -443,4 +419,89 @@ void handle_pc_communication(int32_t i_data,CanCotroll *dev)
     i_val |= (((uint32_t)r_buff[4])<<16ULL);
     i_val |= (((uint32_t)r_buff[5])<<24ULL);
     dev->send_data(r_buff[1],i_val,r_buff[0]);
+}
+void for_test_only()
+{
+    int32_t i_val,i_para;
+    int8_t motNO;
+    int32_t cmNO = 0;
+    int8_t lcdLine = 1;
+    char r_lcdbuff[80] ={};
+    CanCotroll dev_can(1);
+    virtualMotor testMOT(4,&dev_can);
+    Sensor s_start(PIN__Z___Pin);
+    Sensor s_reset(PIN_SW___Pin);
+    s_reset.set_normal_stat(false);
+    s_start.set_normal_stat(false);
+    s_start.enable();
+    s_reset.enable();
+
+    testMOT.setEncoder_nm(150LL);
+    testMOT.setSensorBottomNormalStat(false);
+    testMOT.setDir(true);
+    testMOT.setDirEncoder(false);
+    testMOT.setSpeedUS(245LL,1000LL);
+    testMOT.setDefaultLow(245LL);
+
+
+    testMOT.setSpeedUS(250LL,1000LL);
+    testMOT.setDefaultLow(250LL);
+    while (1)
+    {
+        s_reset.run();
+        s_start.run();
+        dev_can.run();
+        testMOT.run();
+        if(dev_can.read_new_msg(&i_para,&i_val,&motNO))
+        {
+            testMOT.readCAN(motNO,i_para,i_val);
+            sprintf(r_lcdbuff,"1:%d        ",testMOT.getLocation());
+            r_lcdbuff[19] = 0;
+            lcd_setCursor(0,0);
+            lcd_print(r_lcdbuff);
+            cmNO++;
+            lcdLine++;
+            if(lcdLine > 3)
+                lcdLine = 1;
+            sprintf(r_lcdbuff,"c:%d f:%d p:%d :%d      ",cmNO,motNO,i_para,i_val);
+            r_lcdbuff[19] = 0;
+            lcd_setCursor(lcdLine,0);
+            lcd_print(r_lcdbuff);
+        }
+        if(s_reset.is_triged())
+        {
+            if(s_reset.get_sensor_stat() == 1)
+            {
+                //TODO Here
+                testMOT.GoHome();
+            }
+        }
+        if(s_start.is_triged())
+        {
+            if(s_start.get_sensor_stat() == 1)
+            {
+                //TODO Here
+                testMOT.setToGo(950000LL);
+                //dev_can.send_data(C_DSC_STEP_MOTOR_SET_TOGO_Location,95000LL,2);
+            }
+        }
+        
+    }
+}
+void lcd_refresh_data(int32_t mot1,int32_t mot2,int32_t mot3,int32_t mot4)
+{
+    static char r_lcdbuff[80] = {};
+    static volatile int64_t mili_refresh;
+
+    if(mili_refresh > time_us_64())
+        return;
+    mili_refresh = time_us_64() + 980000LL;
+    sprintf(r_lcdbuff,"1:%d 2:%d       ",mot1,mot2);
+    r_lcdbuff[19] = 0;
+    lcd_setCursor(0,0);
+    lcd_print(r_lcdbuff);
+    sprintf(r_lcdbuff,"3:%d 4:%d       ",mot3,mot4);
+    r_lcdbuff[19] = 0;
+    lcd_setCursor(1,0);
+    lcd_print(r_lcdbuff);
 }

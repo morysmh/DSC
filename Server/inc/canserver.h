@@ -18,16 +18,20 @@ private:
         int32_t i_val;
     }storage;
     void handle_message();
-    int32_t p_address = 100;
-    uint8_t p_send_head = 0,p_send_tail = 0;
-    uint8_t p_rx_head = 0,p_rx_tail = 0;
-    const uint8_t c_buff_size = 75;
-    storage p_data[150] = {};
-    storage p_rx[150] = {};
+    bool handle_rx_confirm();
+    int8_t ringbuff_adder(int8_t RbIndex, int8_t iVal);
+    int16_t p_address = 100;
+    int8_t p_send_head = 0,p_send_tail = 0;
+    int8_t p_rx_head = 0,p_rx_tail = 0;
+    const int8_t c_buff_size = 95;
+    storage p_data[100] = {};
+    storage p_rx[100] = {};
     tCAN p_can;
     int64_t p_mili = 0;
-    const int64_t c_interval = 3128LL;
+    const int64_t c_interval = 14510LL;
     uint8_t p_sendtwice = 0;
+    int8_t p_retransmit_count = 0;
+    const int8_t C_count_retransmit = 6;
 };
 
 #endif
