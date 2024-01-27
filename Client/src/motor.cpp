@@ -183,6 +183,8 @@ void StepMotor::calc_Pid()
 }
 void StepMotor::set_togo_Location(int32_t i_togo)
 {
+    i_togo /= pResEncoder;
+    i_togo *= pResEncoder;
     p_togo_Location = i_togo;
 }
 void StepMotor::set_move_command_togo(int32_t i_togo)
@@ -195,5 +197,5 @@ void StepMotor::stop()
 }
 void StepMotor::start_moving()
 {
-    p_togo_Location = p_wait_start_command_togo;
+    set_togo_Location(p_wait_start_command_togo);
 }

@@ -24,12 +24,22 @@ public:
             );
     ~Client();
     void run();
-    void write_to_can(int32_t i_para,int32_t i_val);
-    void write_to_can_bus(Enum_DSC i_para,int32_t i_val);
-    void check_message();
     void increse_sofware_encoder(int8_t i_val);
-    void software_fake_message(int32_t i_para,int32_t i_val);
+    void software_fake_message(int32_t iPara,uint8_t *rbuff);
 private:
+    void check_message();
+    void handle_message(uint8_t *rbuff,uint8_t motNO,uint8_t iPara);
+    void send_LocationData(bool isNow);
+    bool _bv(uint32_t iVal,uint8_t iBV);
+    void config_register_handle(uint8_t *data);
+    void speed_register_handle(uint8_t *data);
+    void togo_register_handle(uint8_t *data);
+    void status_register_handle(uint8_t iStat);
+    void Star_Stop_register_handle(uint8_t *data);
+    void PID_register_handle(uint8_t *data);
+
+    bool pReportingStaus = false;
+    uint8_t pPrevReportStat = 0;
     Encoder *o_encoder;
     Sensor *o_top,*o_bottom;
     StepMotor *o_stepmotor;

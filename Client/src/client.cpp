@@ -1,12 +1,14 @@
 #include "client.h"
 
-void Client::write_to_can_bus(Enum_DSC i_para,int32_t i_val)
+void Client::send_LocationData(bool iSNow)
 {
-    write_to_can((int32_t)i_para,i_val);
-}
-void Client::write_to_can(int32_t i_para,int32_t i_val)
-{
-    o_can->send_data(i_para,i_val);
+    if(pReportingStaus == false)
+        return;
+    o_can->send_status(o_encoder->get_location(),
+                        o_stepmotor->isMoving(),
+                        o_bottom->get_sensor_stat(),
+                        o_top->get_sensor_stat(),
+                        iSNow);
 }
 Client::Client(
             uint8_t pin_clk,
@@ -50,6 +52,7 @@ Client::~Client()
 void Client::run()
 {
     check_message();
+    send_LocationData(false);
     if(o_stepmotor->is_pulse_available())
     {
         o_encoder->set_software_inc(o_stepmotor->get_pulse());
@@ -64,7 +67,7 @@ void Client::run()
     o_bottom->run();
     if(o_bottom->is_triged())
     {
-        write_to_can_bus(C_DSC_SENSOR_BOTTOM_READ_STATUS,o_bottom->get_sensor_stat());
+        send_LocationData(true);
         if(o_bottom->get_sensor_stat())
         {
             o_encoder->set_zero();
@@ -74,112 +77,145 @@ void Client::run()
     }
     if(o_top->is_triged())
     {
-        write_to_can_bus(C_DSC_SENSOR_TOP_READ_STATUS,o_top->get_sensor_stat());
-        if(o_top->get_sensor_stat())
-            write_to_can_bus(C_DSC_ENCODER_TOP_LOCATION, o_encoder->get_location());
+        send_LocationData(true);
     }
 }
 void Client::check_message()
 {
-    int32_t i_para,i_val;
-    if(o_can->read_new_msg(&i_para,&i_val) == false)
-        return;
-    switch (i_para)
+    uint8_t iPara,motNO,oStat;
+    uint8_t rbuff[10];
+    if(o_can->read_other_motor_stat(&oStat))
     {
-    case C_DSC_STEP_MOTOR_SET_DIV:
-        o_stepmotor->set_div(i_val);
+        status_register_handle(oStat);
+    }
+    if(o_can->read_new_message(rbuff,&motNO,&iPara) == false)
+        return; 
+    handle_message(rbuff,motNO,iPara);
+}
+void Client::handle_message(uint8_t *rbuff,uint8_t motNO,uint8_t iPara)
+{
+    switch (iPara)
+    {
+    case C_DSC_OPCODE_REG_CONFIG:
+        config_register_handle(rbuff);
         break;
-    case C_DSC_STEP_MOTOR_SET_low_us:
-        o_stepmotor->set_low_us(i_val);
+    case C_DSC_OPCODE_REG_SPEED:
+        speed_register_handle(rbuff);
         break;
-    case C_DSC_STEP_MOTOR_SET_max_us:
-        o_stepmotor->set_MAX_us(i_val);
+    case C_DSC_OPCODE_REG_TOGO:
+        togo_register_handle(rbuff);
         break;
-    case C_DSC_STEP_MOTOR_SET_KP:
-        o_stepmotor->set_PID(i_val,0,0);
+    case C_DSC_OPCODE_REG_STATUS:
+        status_register_handle(rbuff[C_DSC_ARRAY_STATUS_REPORT_1byte + 1]);
         break;
-    case C_DSC_STEP_MOTOR_SET_KI:
-        o_stepmotor->set_PID(0,i_val,0);
+    case C_DSC_OPCODE_REG_START_STOP:
+        Star_Stop_register_handle(rbuff);
         break;
-    case C_DSC_STEP_MOTOR_SET_KD:
-        o_stepmotor->set_PID(0,0,i_val);
+    case C_DSC_OPCODE_REG_PID_CONFIG:
+        PID_register_handle(rbuff);
         break;
-    case C_DSC_STEP_MOTOR_SET_TOGO_Location:
-        o_stepmotor->set_togo_Location(i_val);
-        break;
-    case C_DSC_STEP_MOTOR_SET_Default_Direction:
-        o_stepmotor->set_default_direction(!i_val);
-        break;
-    case C_DSC_STEP_MOTOR_ENABLE :
-        o_stepmotor->enable();
-        break;
-    case C_DSC_STEP_MOTOR_DISABLE:
-        o_stepmotor->disable();
-        break;
-    case C_DSC_STEP_MOTOR_PID_ENABLE :
-        o_stepmotor->pid_enable();
-        break;
-    case C_DSC_STEP_MOTOR_PID_DISABLE:
-        o_stepmotor->pid_disable();
-        break;
-    case C_DSC_STEP_MOTOR_STOP:
-        o_stepmotor->stop();
-        break;
-    case C_DSC_STEP_MOTOR_START_MOVING:
-        o_stepmotor->start_moving();
-        break;
-    case C_DSC_STEP_MOTOR_TOGO_ON_COMMAND:
-        o_stepmotor->set_move_command_togo(i_val);
-        break;
-    case C_DSC_SENSOR_TOP_ENABLE:
-        o_top->enable();
-        break;
-    case C_DSC_SENSOR_TOP_DISABLE:
-        o_top->disable();
-        break;
-    case C_DSC_SENSOR_BOTTOM_ENABLE:
-        o_bottom->enable();
-        break;
-    case C_DSC_SENSOR_BOTTOM_DISABLE:
-        o_bottom->disable();
-        break;
-    case C_DSC_SENSOR_TOP_READ_STATUS:
-        write_to_can_bus(C_DSC_SENSOR_TOP_READ_STATUS,o_top->get_sensor_stat());
-        break;
-    case C_DSC_SENSOR_BOTTOM_READ_STATUS:
-        write_to_can_bus(C_DSC_SENSOR_BOTTOM_READ_STATUS,o_bottom->get_sensor_stat());
-        break;
-    case C_DSC_SENSOR_BOTTOM_DEFAULT_VALUE:
-        o_bottom->set_normal_stat(i_val);
-        break;
-    case C_DSC_SENSOR_TOP_DEFAULT_VALUE:
-        o_top->set_normal_stat(i_val);
-        break;
-    
-    case C_DSC_ENCODER_HARDWARE_ENABLE :
-        o_encoder->hardware_enable();
-        break;
-    case C_DSC_ENCODER_HARDWARE_DISABLE:
-        o_encoder->hardware_disable();
-        break;
-    case C_DSC_ENCODER_RESOLATION:
-        o_encoder->set_nm_pp(i_val);
-        break;
-    case C_DSC_ENCODER_DIRECTION:
-        o_encoder->direction(i_val);
-        break;
-    case C_DSC_ENCODER_LOCATION:
-        write_to_can_bus(C_DSC_ENCODER_LOCATION,o_encoder->get_location());
-        break;
-    case C_DSC_ENCODER_TOP_LOCATION:
-        //we are not store the top location so no action need here
-        break;
-    default:
-        break;
+        
+        default:
+            break;
     }
 
 }
-void Client::software_fake_message(int32_t i_para,int32_t i_val)
+void Client::speed_register_handle(uint8_t *data)
 {
-    o_can->software_message(i_para,i_val);
+    uint16_t rLow = 0;
+    uint16_t rHigh = 0;
+
+    rLow = data[C_DSC_ARRAY_SPEED_REG_LOW_us_2byte];
+    rLow = (rLow<<8L);
+    rLow |= data[C_DSC_ARRAY_SPEED_REG_LOW_us_1byte];
+
+    rHigh = data[C_DSC_ARRAY_SPEED_REG_HIGH_us_2byte];
+    rHigh = (rHigh<<8L);
+    rHigh |= data[C_DSC_ARRAY_SPEED_REG_HIGH_us_1byte];
+
+    o_stepmotor->set_low_us(rLow);
+    o_stepmotor->set_MAX_us(rHigh);
+}
+void Client::togo_register_handle(uint8_t *data)
+{
+    int32_t oToGo = 0;
+    o_can->ptr8_to_int32(&data[C_DSC_ARRAY_TOGO_REG_index],&oToGo);
+    o_stepmotor->set_move_command_togo(oToGo);
+}
+void Client::status_register_handle(uint8_t iStat)
+{
+    if(pPrevReportStat == iStat)
+        return;
+    pPrevReportStat = iStat;
+    if(_bv(iStat,C_DSC_BIT_STATUS_SENSOR_TOP_STATUS))
+        o_stepmotor->stop();
+}
+void Client::Star_Stop_register_handle(uint8_t *data)
+{
+    uint8_t StartStop = 0;
+    StartStop = data[C_DSC_ARRAY_StartStop];
+    if(_bv(StartStop,C_DSC_BIT_START_MOVING))
+        o_stepmotor->start_moving();
+    if(_bv(StartStop,C_DSC_BIT_STOP_MOVING))
+        o_stepmotor->stop();
+    pReportingStaus = !(_bv(StartStop,C_DSC_BIT_STOP_REPORTING));
+}
+void Client::PID_register_handle(uint8_t *data)
+{
+    o_stepmotor->set_PID(data[C_DSC_ARRAY_PID_REG_KP],data[C_DSC_ARRAY_PID_REG_KI],data[C_DSC_ARRAY_PID_REG_KD]);
+}
+void Client::config_register_handle(uint8_t *data)
+{
+    uint16_t rConf = 0;
+    uint16_t rencoderRes = 0;
+    o_can->set_interval(data[C_DSC_ARRAY_CONFIG_REG_POSITION_INTERVAl]);
+    o_can->set_other_sensor_code(data[C_DSC_ARRAY_CONFIG_REG_FROM_OTHER_MOTOR_STATUS_READ]);
+    o_stepmotor->set_div(data[C_DSC_ARRAY_CONFIG_REG_DIV]);
+    rencoderRes = data[C_DSC_ARRAY_CONFIG_REG_ENCODER_RES_2byte];
+    rencoderRes = (rencoderRes<<8L);
+    rencoderRes |= data[C_DSC_ARRAY_CONFIG_REG_ENCODER_RES_1byte];
+    o_encoder->set_nm_pp(rencoderRes);
+    o_stepmotor->set_EncoderRes(rencoderRes);
+
+    rConf = data[C_DSC_ARRAY_CONFIG_REG_CONF_2byte];
+    rConf = (rConf<<8L);
+    rConf |= data[C_DSC_ARRAY_CONFIG_REG_CONF_1byte];
+    if(_bv(rConf,C_DSC_BIT_CONFIG_ENCODER_HARDWARE) == true)
+        o_encoder->hardware_enable();
+    else
+        o_encoder->hardware_disable();
+    o_bottom->set_normal_stat(_bv(rConf,C_DSC_BIT_CONFIG_BOTTOM_SENSOR_DEFAULT));
+    o_top->set_normal_stat(_bv(rConf,C_DSC_BIT_CONFIG_TOP_SENSOR_DEFAULT));
+    if(_bv(rConf,C_DSC_BIT_CONFIG_SENSOR_ENABLE_BOTTOM))
+        o_bottom->enable();
+    else
+        o_bottom->disable();
+    if(_bv(rConf,C_DSC_BIT_CONFIG_SENSOR_ENABLE_TOP))
+        o_top->enable();
+    else
+        o_top->disable();
+
+    o_stepmotor->set_default_direction(_bv(rConf,C_DSC_BIT_CONFIG_MOTOR_DEFAULT_DIRECTION));
+    o_encoder->direction(_bv(rConf,C_DSC_BIT_CONFIG_ENCODER_DEFAULT_DIRECTION));
+
+    if(_bv(rConf,C_DSC_BIT_CONFIG_MOTOR_ENABLE))
+        o_stepmotor->enable();
+    else
+        o_stepmotor->disable();
+    if(_bv(rConf,C_DSC_BIT_CONFIG_PID_ENABLE))
+        o_stepmotor->pid_enable();
+    else
+        o_stepmotor->pid_disable();
+}
+
+bool Client::_bv(uint32_t iVal,uint8_t iBV)
+{
+    if(iVal & (1ULL<<iBV))
+        return true;
+    return false;
+}
+void Client::software_fake_message(int32_t iPara,uint8_t *rbuff)
+{
+    uint8_t motNO = 0;
+    handle_message(rbuff,motNO,iPara);
 }

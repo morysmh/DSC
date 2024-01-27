@@ -1,87 +1,147 @@
 #include "can.h"
-bool CanCotroll::read_new_msg(int32_t *i_para,int32_t *i_val)
+void CanCotroll::handle_message()
+{
+    if(p_address == 0)
+        return;
+    p_rx[p_rx_head].iPara = p_canRX.data[C_DSC_ARRAY_OPCODE];
+    uint8_t *ptrRX,*ptrCAN;
+    ptrRX = p_rx[p_rx_head].idata;
+    ptrCAN = &p_canRX.data[C_DSC_ARRAY_OPCODE + 1];
+    for(uint i=0;i<7;i++)
+    {
+        *ptrRX = *ptrCAN;
+        ptrRX++;
+        ptrCAN++;
+    }
+    p_rx_head = ringbuff_adder(p_rx_head,1);
+}
+void CanCotroll::handle_other_sensor()
+{
+    if(p_other_sensor_address == 0)
+        return;
+    if(p_canRX.data[C_DSC_ARRAY_OPCODE] != C_DSC_OPCODE_REG_STATUS)
+        return;
+    handle_Self_OtherSensor_Status(p_canRX.data[C_DSC_ARRAY_STATUS_REPORT_1byte + 1]);
+}
+void CanCotroll::handle_Self_OtherSensor_Status(uint8_t status)
+{
+    pOtherMotorStat = status;
+    pOtherSensorStatChange = true;
+}
+bool CanCotroll::read_other_motor_stat(uint8_t *istat)
+{
+    if(pOtherSensorStatChange == false)
+        return false;
+    *istat = pOtherMotorStat;
+    return true;
+}
+void CanCotroll::send_status(int32_t iLocation,bool isMoving, bool iSensorBottom,bool iSensorTOP,bool iSendNOW)
+{
+    uint8_t *ptrSend;
+    if(iSendNOW == true)
+        pt_interval = time_us_64();
+    if(pt_interval > time_us_64())
+        return;
+    pt_interval = time_us_64() + c_interval_status;
+    pSendAvailable = true;
+    p_canSend.header.rtr = 0;
+    p_canSend.header.length = 6;
+    int32_to_ptrint8(iLocation,(uint8_t *)&p_canSend.data[C_DSC_ARRAY_STATUS_LOCATION_index + 1]);
+    p_canSend.data[C_DSC_ARRAY_OPCODE] = C_DSC_OPCODE_REG_STATUS;
+    ptrSend = &p_canSend.data[C_DSC_ARRAY_STATUS_REPORT_1byte + 1];
+    *ptrSend = 0;
+    if(iSensorBottom)
+        *ptrSend |= set_bv(C_DSC_BIT_STATUS_SENSOR_BOTTOM_STATUS);
+    if(iSensorTOP)
+        *ptrSend |= set_bv(C_DSC_BIT_STATUS_SENSOR_TOP_STATUS);
+    if(isMoving)
+        *ptrSend |= set_bv(C_DSC_BIT_STATUS_MOTOR_MOVING);
+    p_canSend.id = C_DSC_Server_ADDRESS_CAN + p_address;
+}
+uint32_t CanCotroll::set_bv(uint8_t iBv)
+{
+    if(iBv >= 32)
+        return 0;
+    return (1ULL<<iBv);
+}
+bool CanCotroll::read_new_message(uint8_t *ptrdata,uint8_t *motNO,uint8_t *iPara)
 {
     if(p_rx_head == p_rx_tail)
         return false;
-    *i_para = p_rx[p_rx_tail].i_para;
-    *i_val = p_rx[p_rx_tail].i_val;
-    p_rx_tail++;
-    if(p_rx_tail >= c_buff_size)
-        p_rx_tail = 0;
+    uint8_t *ptrRX;
+    ptrRX = p_rx[p_rx_tail].idata;
+    for(uint i=0;i<7;i++)
+    {
+        *ptrdata = *ptrRX;
+        ptrRX++;
+        ptrdata++;
+    }
+    *motNO = p_rx[p_rx_tail].imotNO;
+    *iPara = p_rx[p_rx_tail].iPara;
+    p_rx_tail = ringbuff_adder(p_rx_tail,1);
     return true;
 }
-void CanCotroll::send_data(int32_t i_para,int32_t i_val)
+void CanCotroll::set_interval(uint8_t iVal)
 {
-    p_data[p_send_head].i_para = i_para;
-    p_data[p_send_head].i_val = i_val;
-    p_send_head = ringbuff_adder(p_send_head,1);
-}
-bool CanCotroll::retransmit_recieve_data()
-{
-    return true;
-    p_send_tail = ringbuff_adder(p_send_tail,-1);
-    pFlagRetransmit = true;
-    p_data[p_send_tail].i_para = p_rx[p_rx_head].i_para;
-    p_data[p_send_tail].i_val = p_rx[p_rx_head].i_val;
-    return true;
-}
-void CanCotroll::handle_message()
-{
-    int32_t i_val = 0;
-    i_val |= (((uint32_t)p_can.data[0])<<0ULL);
-    i_val |= (((uint32_t)p_can.data[1])<<8ULL);
-    i_val |= (((uint32_t)p_can.data[2])<<16ULL);
-    i_val |= (((uint32_t)p_can.data[3])<<24ULL);
-    p_rx[p_rx_head].i_para = (uint32_t)p_can.data[4];
-    p_rx[p_rx_head].i_val = i_val;
-    p_rx_head = ringbuff_adder(p_rx_head,1);
-    if((p_can.header.rtr) && (p_can.id != C_DSC_BRODCAST_ADDRESS_CAN))
-        retransmit_recieve_data();
+    c_interval_status = (uint64_t)iVal * 4000ULL;
+    c_interval_status += 15123ULL;
 }
 void CanCotroll::run()
 {
     if(mcp2515_check_message())
     {
-        mcp2515_get_message(&p_can);
-        if((p_can.id == p_address) || (p_can.id == C_DSC_BRODCAST_ADDRESS_CAN))
+        mcp2515_get_message(&p_canRX);
+        if(p_canRX.id == p_address)
             handle_message();
+        if(p_canRX.id == p_other_sensor_address)
+            handle_other_sensor();
     }
-    if(p_send_head == p_send_tail)
+    if(pSendAvailable == false)
         return;
     if(mcp2515_check_free_buffer() == false)
         return;
-    p_can.header.length = 8;
-    p_can.header.rtr = pFlagRetransmit;
-    pFlagRetransmit = false;
-    p_can.id = C_DSC_Server_ADDRESS_CAN;
-    p_can.data[0] =((p_data[p_send_tail].i_val>>0ULL) & 0xFFULL);
-    p_can.data[1] =((p_data[p_send_tail].i_val>>8ULL) & 0xFFULL);
-    p_can.data[2] =((p_data[p_send_tail].i_val>>16ULL) & 0xFFULL);
-    p_can.data[3] =((p_data[p_send_tail].i_val>>24ULL) & 0xFFULL);
-    p_can.data[4] =((p_data[p_send_tail].i_para) & 0xFFULL);
-    p_can.data[7] =(p_address & 0xFFULL);
-    if(mcp2515_send_message(&p_can) == false)
-        return;
-    p_send_tail = ringbuff_adder(p_send_tail,1);
+    if(p_canSend.id == p_other_sensor_address)
+        handle_Self_OtherSensor_Status(p_canSend.data[C_DSC_ARRAY_STATUS_REPORT_1byte + 1]);
+    if(mcp2515_send_message(&p_canSend))
+        pSendAvailable = false;
 }
-CanCotroll::CanCotroll(int32_t i_add)
+CanCotroll::CanCotroll(uint8_t i_add)
 {
-    if(i_add == 0)
-        i_add = 100;
     p_address = i_add;
 }
-void CanCotroll::software_message(int32_t i_para,int32_t i_val)
+void CanCotroll::set_other_sensor_code(uint8_t iOtherMotor)
 {
-    p_rx[p_rx_head].i_para = i_para;
-    p_rx[p_rx_head].i_val = i_val;
-    p_rx_head = ringbuff_adder(p_rx_head,1);
+    p_other_sensor_address = iOtherMotor + C_Server_ADDRESS_CAN;
 }
-int8_t CanCotroll::ringbuff_adder(int8_t RbIndex, int8_t iVal)
+uint8_t CanCotroll::ringbuff_adder(uint8_t rindx, int8_t iVal)
 {
+    int16_t RbIndex;
+    RbIndex = rindx;
     RbIndex += iVal;
     if(RbIndex < 0)
         RbIndex = c_buff_size;
     if(RbIndex > c_buff_size)
         RbIndex = 0;
     return RbIndex;
+}
+void CanCotroll::ptr8_to_int32(uint8_t *ptrdata,int32_t *iout)
+{
+    *iout = 0;
+	ptrdata += 3;
+    for(uint i=0;i<4;i++)
+    {
+        *iout = (uint32_t)((*iout)<<8LL);
+        *iout |= (uint8_t)(*ptrdata);
+	    *ptrdata--;
+    }
+
+}
+void CanCotroll::int32_to_ptrint8(int32_t iVal,uint8_t *ptrdata)
+{
+    for(uint i=0;i<4;i++)
+    {
+        *ptrdata = (uint8_t)(iVal & 0xFFLL);
+        ptrdata++;
+        iVal = (iVal>>8LL);
+    }
 }

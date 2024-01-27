@@ -1,9 +1,9 @@
 #include "clientmotor.h"
 
-virtualMotor::virtualMotor(uint8_t add,CanCotroll *ptrcan)
+virtualMotor::virtualMotor(uint8_t add,ServerCAN *ptrcan)
 {
     pAddressMotor = add;
-    ptr_can = ptrcan;
+    ptrCAN = ptrcan;
     if(pAddressMotor == C_DSC_BRODCAST_ADDRESS_CAN)
         return;
     if(pAddressMotor <= 0)
@@ -17,8 +17,15 @@ virtualMotor::virtualMotor(uint8_t add,CanCotroll *ptrcan)
     setPid(8,2,0);
     setEnablePID(true);
     stop();
+    setReportInterval(80);
+    setSensorBottomNormalStat(true);
+    setSensorTOPNormalStat(true);
 }
-void virtualMotor::setDiv(int32_t iDiv)
+void virtualMotor::setReportInterval(uint8_t iVal)
+{
+    pdataConfig[C_DSC_ARRAY_CONFIG_REG_POSITION_INTERVAl] = iVal;
+}
+void virtualMotor::setDiv(uint8_t iDiv)
 {
     switch (iDiv)
     {
@@ -27,216 +34,160 @@ void virtualMotor::setDiv(int32_t iDiv)
     case 4:
     case 8:
     case 16:
-        communicate_to_can(C_DSC_STEP_MOTOR_SET_DIV,iDiv);
+        pdataConfig[C_DSC_ARRAY_CONFIG_REG_DIV] = iDiv;
         break;
     default:
         break;
     }
 }
-void virtualMotor::setPid(int32_t kp,int32_t ki,int32_t kd)
+void virtualMotor::setPid(uint8_t kp,uint8_t ki,uint8_t kd)
 {
-    communicate_to_can(C_DSC_STEP_MOTOR_SET_KP,kp);
-    communicate_to_can(C_DSC_STEP_MOTOR_SET_KI,ki);
-    communicate_to_can(C_DSC_STEP_MOTOR_SET_KD,kd);
+    uint8_t ptmpBuff[10] = {};
+    ptmpBuff[C_DSC_ARRAY_PID_REG_KP] = kp;
+    ptmpBuff[C_DSC_ARRAY_PID_REG_KI] = ki;
+    ptmpBuff[C_DSC_ARRAY_PID_REG_KD] = kd;
+    ptrCAN->send_data(pAddressMotor,C_DSC_OPCODE_REG_PID_CONFIG,ptmpBuff);
+}
+void virtualMotor::writeConfigRegMotor(uint8_t bit,bool val)
+{
+    uint8_t *ptrData;
+    ptrData = &pdataConfig[C_DSC_ARRAY_CONFIG_REG_CONF_1byte];
+    if(bit > 7)
+    {
+        ptrData = &pdataConfig[C_DSC_ARRAY_CONFIG_REG_CONF_2byte];
+        bit -= 8;
+    }
+    *ptrData &= (~(1<<bit)) & 0xFF;
+    if(val)
+        *ptrData |= (1<<bit) & 0xFF;
 }
 void virtualMotor::setEnableMotor(bool iVal)
 {
-    pMotorEnable = iVal;
-    if(pMotorEnable == true)
-    {
-        communicate_to_can(C_DSC_STEP_MOTOR_ENABLE,1);
-        return;
-    }
-    communicate_to_can(C_DSC_STEP_MOTOR_DISABLE,1);
+    writeConfigRegMotor(C_DSC_BIT_CONFIG_MOTOR_ENABLE,iVal);
 }
 void virtualMotor::setDir(bool iVal)
 {
-    communicate_to_can(C_DSC_STEP_MOTOR_SET_Default_Direction,iVal);
+    writeConfigRegMotor(C_DSC_BIT_CONFIG_MOTOR_DEFAULT_DIRECTION,iVal);
 }
 void virtualMotor::setDirEncoder(bool iVal)
 {
-    communicate_to_can(C_DSC_ENCODER_DIRECTION,iVal);
+    writeConfigRegMotor(C_DSC_BIT_CONFIG_ENCODER_DEFAULT_DIRECTION,iVal);
 }
 void virtualMotor::setEnablePID(bool iVal)
 {
-    if(iVal == true)
-    {
-        communicate_to_can(C_DSC_STEP_MOTOR_PID_ENABLE,1);
-        return;
-    }
-    communicate_to_can(C_DSC_STEP_MOTOR_PID_DISABLE,1);
+    writeConfigRegMotor(C_DSC_BIT_CONFIG_PID_ENABLE,iVal);
 }
 void virtualMotor::setEnableEncoder(bool iVal)
 {
-    if(iVal == true)
-    {
-        communicate_to_can(C_DSC_ENCODER_HARDWARE_ENABLE,1);
-        return;
-    }
-    communicate_to_can(C_DSC_ENCODER_HARDWARE_DISABLE,1);
+    writeConfigRegMotor(C_DSC_BIT_CONFIG_ENCODER_HARDWARE,iVal);
 }
-void virtualMotor::setSpeedUS(int32_t iLow,int32_t iHigh)
+void virtualMotor::setSpeedUS(uint16_t iLow,uint16_t iHigh)
 {
-    if(iLow <= 10LL)
-        iLow = 10LL;
-    if(iLow >= 65530LL) //Limit us to 16 bit variable
-        iLow = 65530LL;
+    uint8_t ptmpBuff[10] = {};
+    if(iLow <= 15LL)
+        iLow = 15LL;
 
-    if(iHigh <= 10LL)
-        iHigh = 10LL;
-    if(iHigh >= 65530LL) //Limit us to 16 bit
-        iHigh = 65530LL;
-    if(pLowDelayPulse != iLow)
-        communicate_to_can(C_DSC_STEP_MOTOR_SET_low_us,iLow);
-    if(pHighDelayPulse != iHigh)
-        communicate_to_can(C_DSC_STEP_MOTOR_SET_max_us,iHigh);
+    if(iHigh <= 50LL)
+        iHigh = 50LL;
     pLowDelayPulse = iLow;
     pHighDelayPulse = iHigh;
+    ptmpBuff[C_DSC_ARRAY_SPEED_REG_HIGH_us_1byte] = pHighDelayPulse & 0xFF;
+    ptmpBuff[C_DSC_ARRAY_SPEED_REG_HIGH_us_2byte] = (pHighDelayPulse>>8) & 0xFF;
+    ptmpBuff[C_DSC_ARRAY_SPEED_REG_LOW_us_1byte] = pLowDelayPulse & 0xFF;
+    ptmpBuff[C_DSC_ARRAY_SPEED_REG_LOW_us_2byte] = (pLowDelayPulse>>8) & 0xFF;
+    ptrCAN->send_data(pAddressMotor,C_DSC_OPCODE_REG_SPEED,ptmpBuff);
 
 }
-void virtualMotor::setDefaultLow(int32_t iVal)
+void virtualMotor::setDefaultLow(uint16_t iVal)
 {
-    if(iVal <= 10)
-        return;
-    if(iVal >= 65530)
-        iVal = 65530;
+    if(iVal <= 15)
+        iVal = 15;
     pDefLow = iVal;
 }
-void virtualMotor::setOtherMotorSensorStop(int8_t iMotNo)
+void virtualMotor::setOtherMotorSensorStop(uint8_t iMotNo)
 {
-    if(iMotNo <= 0)
-        return;
-    if(iMotNo > 8)
-        return;
-    pOtherMotorSensorStop = iMotNo;
+    pdataConfig[C_DSC_ARRAY_CONFIG_REG_FROM_OTHER_MOTOR_STATUS_READ] = iMotNo;
 }
 void virtualMotor::setToGo(int32_t itogo)
 {
-    pToGoPosition = itogo;
-    pToGoPosition /= pEncoder_nm;
-    pToGoPosition *= pEncoder_nm;
-    communicate_to_can(C_DSC_STEP_MOTOR_TOGO_ON_COMMAND,pToGoPosition);
-    communicate_to_can(C_DSC_STEP_MOTOR_START_MOVING,1);
+    uint8_t ptmpBuff[10] = {};
+    ptrCAN->int32_to_ptrint8(itogo,&ptmpBuff[C_DSC_ARRAY_TOGO_REG_index]);
+    ptrCAN->send_data(pAddressMotor,C_DSC_OPCODE_REG_TOGO,ptmpBuff);
 }
 void virtualMotor::stop()
 {
-    communicate_to_can(C_DSC_STEP_MOTOR_STOP,1);
+    uint8_t ptmpBuff[10] = {};
+    ptmpBuff[C_DSC_ARRAY_StartStop] = 0;
+    ptmpBuff[C_DSC_ARRAY_StartStop] |= (1<<C_DSC_BIT_STOP_MOVING);
+    ptrCAN->send_data(pAddressMotor,C_DSC_OPCODE_REG_START_STOP,ptmpBuff);
 }
-void virtualMotor::setSensorBottomNormalStat(bool i_val)
+void virtualMotor::Move()
 {
-    communicate_to_can(C_DSC_SENSOR_BOTTOM_DEFAULT_VALUE,i_val);
+    uint8_t ptmpBuff[10] = {};
+    ptmpBuff[C_DSC_ARRAY_StartStop] = 0;
+    ptmpBuff[C_DSC_ARRAY_StartStop] |= (1<<C_DSC_BIT_START_MOVING);
+    ptrCAN->send_data(pAddressMotor,C_DSC_OPCODE_REG_START_STOP,ptmpBuff);
 }
-void virtualMotor::setSensorTOPNormalStat(bool i_val)
+
+void virtualMotor::setSensorBottomNormalStat(bool iVal)
 {
-    communicate_to_can(C_DSC_SENSOR_TOP_DEFAULT_VALUE,i_val);
+    writeConfigRegMotor(C_DSC_BIT_CONFIG_BOTTOM_SENSOR_DEFAULT,iVal);
+    writeConfigRegMotor(C_DSC_BIT_CONFIG_SENSOR_ENABLE_BOTTOM,true);
 }
-bool virtualMotor::isBusy()
+void virtualMotor::setSensorTOPNormalStat(bool iVal)
 {
-    if(pToGoPosition == pCurrentPosition)
-        return false;
-    return true;
+    writeConfigRegMotor(C_DSC_BIT_CONFIG_TOP_SENSOR_DEFAULT,iVal);
+    writeConfigRegMotor(C_DSC_BIT_CONFIG_SENSOR_ENABLE_TOP,true);
 }
-bool virtualMotor::isHome()
+void virtualMotor::synchConfig()
 {
-    if((pBottomSensorStat == true) && (pCurrentPosition == 0))
-        return true;
-    return false;
+    ptrCAN->send_data(pAddressMotor,C_DSC_OPCODE_REG_CONFIG,pdataConfig);
 }
-void virtualMotor::readCAN(int8_t motNO,int8_t iPara,int32_t iVal)
+void virtualMotor::readCAN(int32_t iLocation,bool iBottomSensorStat,bool iTopSensorStat,bool imotorMoving,uint8_t iMorNO)
 {
-    if(motNO == pOtherMotorSensorStop)
+    if(iMorNO == pdataConfig[C_DSC_ARRAY_CONFIG_REG_FROM_OTHER_MOTOR_STATUS_READ])
     {
-        if((iPara == C_DSC_SENSOR_TOP_READ_STATUS) && (iVal == 1))
+        if(iTopSensorStat != pSensorStatTOP)
         {
-            miliReadPos = 1;
-            pTOPSensorTrig = true;
-            stop();
-            readPos();
+            pSensorStatTOP = iTopSensorStat;
+            if(pSensorStatTOP == true)
+                stop();
         }
     }
-    if(motNO != pAddressMotor)
+    if(iMorNO != pAddressMotor)
         return;
-    switch (iPara)
+    pCurrentPosition = iLocation;
+    pMotorMoving = imotorMoving;
+    if(pSensorStatBOTTOM != iBottomSensorStat)
     {
-    case C_DSC_SENSOR_BOTTOM_READ_STATUS:
-        pBottomSensorStat = !!iVal;
-        if(pBottomSensorStat_LastStat == pBottomSensorStat)
-            break;
-        pBottomSensorStat_LastStat = pBottomSensorStat;
-        if(pBottomSensorStat_LastStat == 0)
-            break;
-        pToGoPosition = 0;
-        pCurrentPosition = 0;
-        break;
-
-    case C_DSC_ENCODER_LOCATION:
-        pCurrentPosition = iVal;
-        if(pTOPSensorTrig == true)
+        pSensorStatBOTTOM = iBottomSensorStat;
+        if(pSensorStatBOTTOM == true)
         {
-            pTOPSensorTrig = false;
-            pToGoPosition = iVal;
+            pToGoPosition = 0;
+            pCurrentPosition = 0;
         }
-        break;
-    
-    default:
-        break;
     }
 }
 
-void virtualMotor::retransmit_data()
+void virtualMotor::communicate_to_can(uint8_t ipara,uint8_t *idata)
 {
-
-}
-void virtualMotor::communicate_to_can(int8_t ipara,int32_t ival)
-{
-    ptr_can->send_data(ipara,ival,pAddressMotor);
+    ptrCAN->send_data(pAddressMotor,ipara,idata);
 }
 void virtualMotor::run()
 {
-    readPos();
-    readSensor();
 }
-void virtualMotor::readPos()
+void virtualMotor::setEncoder_nm(uint16_t inm)
 {
-    if (miliReadPos > time_us_64())
-        return;
-    miliReadPos = time_us_64() + cIntervalReadPos;
-    if(pToGoPosition == pCurrentPosition)
-        miliReadPos = time_us_64() + (cIntervalReadPos * 10);
-    communicate_to_can(C_DSC_ENCODER_LOCATION,1);
-}
-void virtualMotor::readSensor()
-{
-    if (miliSensorRead > time_us_64())
-        return;
-    miliSensorRead = time_us_64() + cIntervalReadPos;
-    if(pToGoPosition >= 0)
-        miliSensorRead = time_us_64() + (cIntervalReadPos * 10);
-    communicate_to_can(C_DSC_SENSOR_BOTTOM_READ_STATUS,1);
+    if(inm <= 50)
+        inm = 50;
+    pdataConfig[C_DSC_ARRAY_CONFIG_REG_ENCODER_RES_1byte] = inm & 0xFF;
+    pdataConfig[C_DSC_ARRAY_CONFIG_REG_ENCODER_RES_2byte] = (inm>>8) & 0xFF;
 }
 
-void virtualMotor::setEncoder_nm(int32_t inm)
-{
-    if(inm <= 0)
-        return;
-    if(inm == pEncoder_nm)
-        return;
-    pEncoder_nm = inm;
-    communicate_to_can(C_DSC_ENCODER_RESOLATION,pEncoder_nm);
-}
-
-bool virtualMotor::is_near()
-{
-    int32_t tmp = pCurrentPosition - pToGoPosition;
-    if(tmp < 0)
-        tmp *= -1;
-    if(tmp <= (2 * pEncoder_nm))
-        return true;
-    return false;
-}
 void virtualMotor::GoHome()
 {
-    if(pBottomSensorStat_LastStat == true)
+    if(pSensorStatBOTTOM == true)
         return;
     setToGo(-500000000LL);
+    Move();
 }

@@ -26,10 +26,12 @@ public:
     void pid_disable(){p_pid_en = false;}
     void enable();
     void disable();
+    bool isMoving()const {return (!(p_togo_Location == p_current_location));}
     bool is_pulse_available();
     int8_t get_pulse();
     void stop();
     void start_moving();
+    void set_EncoderRes(uint16_t inm){pResEncoder = inm/10;};
 
 private:
     int32_t p_current_location = 0;
@@ -64,4 +66,5 @@ private:
     bool p_stat_dir = false;
     bool p_def_direction = true;
     int32_t p_sofware_pulse = 0;
+    uint16_t pResEncoder = 10;
 };

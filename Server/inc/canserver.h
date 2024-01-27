@@ -3,35 +3,38 @@
 #ifndef __CAN__Class__
 #define __CAN__Class__
 
-class CanCotroll
+class ServerCAN
 {
 public:
-    CanCotroll(int32_t i_add);
-    ~CanCotroll(){}
+    ServerCAN(uint8_t iIn){};
+    ~ServerCAN(){}
     void run();
-    bool read_new_msg(int32_t *i_para,int32_t *i_val,int8_t *motNO);
-    void send_data(int32_t i_para,int32_t i_val,int8_t i_motNO);
+    bool read_motLocation(int32_t *location,
+                            bool *pBottomSensor,
+                            bool *pTopSensor,
+                            bool *pMotorMoving,
+                            uint8_t *motNO);
+    void send_data(uint8_t oMotNO,uint8_t iOpcode,uint8_t *data);
+    void ptr8_to_int32(uint8_t *ptrdata,int32_t *iout);
+    void int32_to_ptrint8(int32_t iVal,uint8_t *ptrdata);
 private:
+    bool _bv(uint32_t iVal,uint8_t iBV);
     typedef struct{
-        int8_t i_para;
-        int8_t motNO;
-        int32_t i_val;
+        uint8_t iOpCode;
+        uint8_t imotNO;
+        uint8_t idata[7];
     }storage;
+    void copy_uint8(uint8_t *dest,uint8_t *source,uint8_t count);
     void handle_message();
-    bool handle_rx_confirm();
     int8_t ringbuff_adder(int8_t RbIndex, int8_t iVal);
-    int16_t p_address = 100;
     int8_t p_send_head = 0,p_send_tail = 0;
     int8_t p_rx_head = 0,p_rx_tail = 0;
-    const int8_t c_buff_size = 95;
-    storage p_data[100] = {};
-    storage p_rx[100] = {};
-    tCAN p_can;
+    const int8_t c_buff_size = 45;
+    storage p_data[50] = {};
+    storage p_rx[50] = {};
+    tCAN p_can = {};
     int64_t p_mili = 0;
     const int64_t c_interval = 14510LL;
-    uint8_t p_sendtwice = 0;
-    int8_t p_retransmit_count = 0;
-    const int8_t C_count_retransmit = 6;
 };
 
 #endif

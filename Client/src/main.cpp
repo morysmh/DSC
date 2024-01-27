@@ -303,8 +303,10 @@ void pio_irq_handler()
 void for_test_only()
 {
     static volatile bool is_run = false;
-    static volatile uint64_t t_mili = 1900000ULL;
+    static volatile uint64_t t_mili = 500000ULL;
     static volatile int8_t r_i = 0;
+    uint8_t buf[15] = {};
+    uint16_t rtmp = 0;
     if(is_run == true)
         return;
     if(t_mili > time_us_64())
@@ -312,52 +314,67 @@ void for_test_only()
     switch (r_i)
     {
     case 0:
-        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_DIV,16);
-        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_Default_Direction,false);
-        ptr_client->software_fake_message(C_DSC_ENCODER_RESOLATION,500LL);
-        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_KP,8);
-        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_KI,2);
-        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_KD,0);
-        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_PID_ENABLE,1);
-        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_ENABLE,1);
-        ptr_client->software_fake_message(C_DSC_ENCODER_HARDWARE_ENABLE,1);
-        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_Default_Direction,true);
-        ptr_client->software_fake_message(C_DSC_ENCODER_DIRECTION,false);
-        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_low_us,15LL);
-        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_max_us,1500LL);
+        rtmp = 0xFFFF;
+        rtmp &= ~(1<<C_DSC_BIT_CONFIG_ENCODER_DEFAULT_DIRECTION);
+        rtmp &= ~(1<<C_DSC_BIT_CONFIG_MOTOR_DEFAULT_DIRECTION);
+        buf[C_DSC_ARRAY_CONFIG_REG_CONF_1byte] = rtmp & 0xFF;
+        buf[C_DSC_ARRAY_CONFIG_REG_CONF_2byte] = (rtmp>>8);
+        buf[C_DSC_ARRAY_CONFIG_REG_POSITION_INTERVAl] = 10;
+        buf[C_DSC_ARRAY_CONFIG_REG_FROM_OTHER_MOTOR_STATUS_READ] = 2;
+        buf[C_DSC_ARRAY_CONFIG_REG_DIV] = 16;
+        buf[C_DSC_ARRAY_CONFIG_REG_ENCODER_RES_1byte] = 5000 & 0xFF;
+        buf[C_DSC_ARRAY_CONFIG_REG_ENCODER_RES_2byte] = (5000>>8);
+        ptr_client->software_fake_message(C_DSC_OPCODE_REG_CONFIG,buf);
+        buf[C_DSC_ARRAY_PID_REG_KP] = 8;
+        buf[C_DSC_ARRAY_PID_REG_KI] = 2;
+        buf[C_DSC_ARRAY_PID_REG_KD] = 0;
+        ptr_client->software_fake_message(C_DSC_OPCODE_REG_PID_CONFIG,buf);
+        buf[C_DSC_ARRAY_SPEED_REG_HIGH_us_2byte] = (1500>>8);
+        buf[C_DSC_ARRAY_SPEED_REG_HIGH_us_1byte] = (1500) & 0xFF;
+        buf[C_DSC_ARRAY_SPEED_REG_LOW_us_2byte] = (50>>8);
+        buf[C_DSC_ARRAY_SPEED_REG_LOW_us_1byte] = (50) & 0xFF;
+        ptr_client->software_fake_message(C_DSC_OPCODE_REG_SPEED,buf);
+        buf[C_DSC_ARRAY_TOGO_REG_index] = 240;
+        buf[C_DSC_ARRAY_TOGO_REG_index + 1] = 126;
+        buf[C_DSC_ARRAY_TOGO_REG_index + 2] = 14;
+        buf[C_DSC_ARRAY_TOGO_REG_index + 3] = 0;
+        ptr_client->software_fake_message(C_DSC_OPCODE_REG_TOGO,buf);
 
-
-
-        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_TOGO_Location,120000LL);
-        r_i = 1;
-        t_mili = time_us_64() + 12000000ULL;
+        t_mili = time_us_64() + 500000ULL;
+        r_i++;
         break;
     case 1:
-        r_i = 2;
-        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_DIV,16);
-        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_Default_Direction,false);
-        ptr_client->software_fake_message(C_DSC_ENCODER_RESOLATION,500LL);
-        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_KP,8);
-        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_KI,2);
-        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_KD,0);
-        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_PID_ENABLE,1);
-        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_ENABLE,1);
-        ptr_client->software_fake_message(C_DSC_ENCODER_HARDWARE_ENABLE,1);
-        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_Default_Direction,true);
-        ptr_client->software_fake_message(C_DSC_ENCODER_DIRECTION,false);
-        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_low_us,15LL);
-        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_max_us,1500LL);
-        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_low_us,35LL);
-        t_mili = time_us_64() + 9000ULL;
+        buf[C_DSC_ARRAY_StartStop] = 0;
+        buf[C_DSC_ARRAY_StartStop] |= (1<<C_DSC_BIT_START_MOVING);
+        ptr_client->software_fake_message(C_DSC_OPCODE_REG_START_STOP,buf);
+        t_mili = time_us_64() + 12000000ULL;
+        r_i++;
         break;
     case 2:
-        ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_TOGO_Location,-23000000LL);
+        r_i++;
+        buf[C_DSC_ARRAY_TOGO_REG_index] = 240;
+        buf[C_DSC_ARRAY_TOGO_REG_index + 1] = 126;
+        buf[C_DSC_ARRAY_TOGO_REG_index + 2] = 14;
+        buf[C_DSC_ARRAY_TOGO_REG_index + 3] = 255;
+        ptr_client->software_fake_message(C_DSC_OPCODE_REG_TOGO,buf);
+        buf[C_DSC_ARRAY_StartStop] = 0;
+        buf[C_DSC_ARRAY_StartStop] |= (1<<C_DSC_BIT_START_MOVING);
+        ptr_client->software_fake_message(C_DSC_OPCODE_REG_START_STOP,buf);
+        t_mili = time_us_64() + 12000000ULL;
+        break;
+    case 3:
+        r_i++;
+        buf[C_DSC_ARRAY_StartStop] = 0;
+        buf[C_DSC_ARRAY_StartStop] |= (1<<C_DSC_BIT_STOP_MOVING);
+        ptr_client->software_fake_message(C_DSC_OPCODE_REG_START_STOP,buf);
+        t_mili = time_us_64() + 9000ULL;
+        //ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_TOGO_Location,-23000000LL);
         //ptr_client->software_fake_message(C_DSC_STEP_MOTOR_SET_TOGO_Location,5000ULL);
-        is_run = true;
         break;
     
     default:
         r_i = 0;
+        is_run = true;
         break;
     }
 }
