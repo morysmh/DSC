@@ -16,10 +16,11 @@ public:
     void setSensorBottomNormalStat(bool iVal);
     void setSensorTOPNormalStat(bool iVal);
     void setSpeedUS(uint16_t iLow,uint16_t iHigh);
-    void setDefaultLow(uint16_t iDefLow);
+    void setDefaultus(uint16_t iDefLow,uint16_t iDefHigh);
     void setOtherMotorSensorStop(uint8_t iMotNo);
     void setEncoder_nm(uint16_t inm);
     void setToGo(int32_t itogo);
+    void setReleativeToGo(int32_t itogo);
     void setReportInterval(uint8_t iVal);
     void stop();
     bool isBusy() const {return pMotorMoving;}
@@ -37,7 +38,7 @@ private:
     uint8_t pdataConfig[10] = {};
     uint16_t pLowDelayPulse = 5000LL;
     uint16_t pHighDelayPulse = 15000LL;
-    uint16_t pDefLow = 500LL;
+    uint16_t pDefLow = 500LL,pDefHigh = 1500LL;
     int32_t pCurrentPosition = 0;
     int32_t pToGoPosition = 0;
     void communicate_to_can(uint8_t ipara,uint8_t *idata);

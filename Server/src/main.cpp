@@ -8,6 +8,11 @@
 #include "clientmotor.h"
 #include "sensor.h"
 
+#define Absolute 1
+#define Reletive 2
+#define Speed 3
+#define END_OF_Command 4
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -36,6 +41,7 @@ void Encode_pio_init(uint p_pinA);
 PIO __encoder_pio;
 uint __encoder_sm;
 //******************************************
+extern int32_t position_speed[][5];
 
 void Board_pin_Config();
 void chagneLED(LED_Interval *led);
@@ -47,7 +53,24 @@ void Enable_A4498();
 void init_board_config();
 void handle_pc_communication(int32_t i_data,ServerCAN *dev);
 void for_test_only();
-void lcd_refresh_data(int32_t mot1,int32_t mot2,int32_t mot3,int32_t mot4);
+void lcd_refresh_data(virtualMotor *mot1,virtualMotor *mot2,virtualMotor *mot3,virtualMotor *mot4);
+bool persision_home(uint8_t start,virtualMotor *mot1,virtualMotor *mot2,virtualMotor *mot3,virtualMotor *mot4);
+bool move_motor(uint8_t start,virtualMotor *mot1,virtualMotor *mot2,virtualMotor *mot3,virtualMotor *mot4);
+void set_speed(int32_t *ptr,
+                virtualMotor *mot1,
+                virtualMotor *mot2,
+                virtualMotor *mot3,
+                virtualMotor *mot4);
+void move_releative(int32_t *ptr,
+                virtualMotor *mot1,
+                virtualMotor *mot2,
+                virtualMotor *mot3,
+                virtualMotor *mot4);
+void move_absolute(int32_t *ptr,
+                virtualMotor *mot1,
+                virtualMotor *mot2,
+                virtualMotor *mot3,
+                virtualMotor *mot4);
 int main()
 {
     int64_t t_mili_reset_interval = 0;
@@ -99,15 +122,15 @@ int main()
     mot1.setSensorBottomNormalStat(true);
     mot1.setDir(false);
     mot1.setDirEncoder(false);
-    mot1.setSpeedUS(200LL,1000LL);
-    mot1.setDefaultLow(200LL);
+    mot1.setSpeedUS(200LL,1500LL);
+    mot1.setDefaultus(200LL,1500LL);
     mot1.synchConfig();
 
     mot2.setEnableEncoder(true);
     mot2.setDir(false);
     mot2.setDirEncoder(false);
     mot2.setSpeedUS(25,1500LL);
-    mot2.setDefaultLow(25);
+    mot2.setDefaultus(25,1500);
     mot2.setOtherMotorSensorStop(2);
     mot2.synchConfig();
 
@@ -116,30 +139,33 @@ int main()
     mot3.setDir(false);
     mot3.setDirEncoder(false);
     mot3.setSpeedUS(25,1500LL);
-    mot3.setDefaultLow(25);
+    mot3.setDefaultus(25,1500);
     mot3.setOtherMotorSensorStop(2);
     mot3.synchConfig();
 
-    mot4.setEncoder_nm(1500LL);
+    mot4.setEncoder_nm(500LL);
     mot4.setSensorBottomNormalStat(false);
     mot4.setDir(false);
     mot4.setDirEncoder(false);
     mot4.setSpeedUS(25,1500LL);
-    mot4.setDefaultLow(25);
+    mot4.setDefaultus(25,1500);
     mot4.synchConfig();
+
 
     t_first = time_us_64() + 400000LL;
     while(t_first > time_us_64());
     while (1)
     {
-        lcd_refresh_data(mot1.getLocation(),mot2.getLocation(),mot3.getLocation(),mot4.getLocation());
+        lcd_refresh_data(&mot1,&mot2,&mot3,&mot4);
+        persision_home(0,&mot1,&mot2,&mot3,&mot4);
+        move_motor(0,&mot1,&mot2,&mot3,&mot4);
         s_reset.run();
         s_start.run();
         dev_can.run();
-        //mot1.run();
-        //mot2.run();
-        //mot3.run();
-        //mot4.run();
+        mot1.run();
+        mot2.run();
+        mot3.run();
+        mot4.run();
         chagneLED(&Pico_LED);
         PICO_LED_Stat(Pico_LED.stat);
         r_tmp_input = getchar_timeout_us(1);
@@ -164,24 +190,14 @@ int main()
                 if(t_mili_reset_interval > time_us_64() )
                     continue;
                 t_mili_reset_interval = time_us_64() + c_reset_interval;
-                mot1.GoHome();
-                mot2.GoHome();
-                mot3.GoHome();
-                mot4.GoHome();
+                persision_home(1,&mot1,&mot2,&mot3,&mot4);
             }
         }
         if(s_start.is_triged())
         {
             if(s_start.get_sensor_stat() == 1)
             {
-                mot1.setToGo(950000LL);
-                mot2.setToGo(950000LL);
-                mot3.setToGo(950000LL);
-                mot4.setToGo(950000LL);
-                mot1.Move();
-                mot2.Move();
-                mot3.Move();
-                mot4.Move();
+                move_motor(1,&mot1,&mot2,&mot3,&mot4);
                 //brodcast.start_moving();
                 //brodcast.stop();
             }
@@ -448,7 +464,7 @@ void for_test_only()
     testMOT.setDir(false);
     testMOT.setDirEncoder(false);
     testMOT.setSpeedUS(245LL,1000LL);
-    testMOT.setDefaultLow(245LL);
+    testMOT.setDefaultus(245LL,1000LL);
     testMOT.setOtherMotorSensorStop(2);
     testMOT.synchConfig();
 
@@ -457,7 +473,7 @@ void for_test_only()
 
 
     testMOT.setSpeedUS(250LL,1000LL);
-    testMOT.setDefaultLow(250LL);
+    testMOT.setDefaultus(250LL,1000LL);
     while (1)
     {
         s_reset.run();
@@ -502,20 +518,282 @@ void for_test_only()
         
     }
 }
-void lcd_refresh_data(int32_t mot1,int32_t mot2,int32_t mot3,int32_t mot4)
+void lcd_buffer_write(char *ibuff,virtualMotor *mot,uint8_t iMotNo)
 {
-    static char r_lcdbuff[80] = {};
+    sprintf(ibuff,"%d %d:%d              ",mot->isBusy(),iMotNo+1,mot->getLocation());
+    ibuff[19] = 0;
+    lcd_setCursor(iMotNo,0);
+    lcd_print(ibuff);
+}
+void lcd_refresh_data(virtualMotor *mot1,virtualMotor *mot2,virtualMotor *mot3,virtualMotor *mot4)
+{
+    static char r_lcdbuff[40] = {};
     static volatile int64_t mili_refresh;
 
     if(mili_refresh > time_us_64())
         return;
     mili_refresh = time_us_64() + 980000LL;
-    sprintf(r_lcdbuff,"1:%d 2:%d       ",mot1,mot2);
-    r_lcdbuff[19] = 0;
-    lcd_setCursor(0,0);
-    lcd_print(r_lcdbuff);
-    sprintf(r_lcdbuff,"3:%d 4:%d       ",mot3,mot4);
-    r_lcdbuff[19] = 0;
-    lcd_setCursor(1,0);
-    lcd_print(r_lcdbuff);
+    lcd_buffer_write(r_lcdbuff,mot1,0);
+    lcd_buffer_write(r_lcdbuff,mot2,1);
+    lcd_buffer_write(r_lcdbuff,mot3,2);
+    lcd_buffer_write(r_lcdbuff,mot4,3);
 }
+typedef enum{
+    do_nothing = 0,
+    home_motor_highspeed_except4,
+    home_motor_4,
+    go_to_900um,
+    low_speed_motor,
+    go_home_low_speed,
+    wait_motor_stop,
+    set_default_speed,
+}homing;
+bool persision_home(uint8_t iStart,
+                    virtualMotor *mot1,
+                    virtualMotor *mot2,
+                    virtualMotor *mot3,
+                    virtualMotor *mot4)
+{
+volatile static uint8_t iCount = 0;
+volatile static uint64_t t_mili = 0;
+if((iStart == 1) && (iCount == do_nothing))
+{
+    iCount = home_motor_highspeed_except4;
+}
+if(iCount == do_nothing)
+    return false;
+if(t_mili > time_us_64())
+    return !!(iCount);
+t_mili = time_us_64() + 800000ULL;
+switch (iCount)
+{
+case do_nothing:
+    break;
+case home_motor_highspeed_except4:
+    mot1->setDefaultus(0,0);
+    mot2->setDefaultus(0,0);
+    mot3->setDefaultus(0,0);
+    mot1->GoHome();
+    mot2->GoHome();
+    mot3->GoHome();
+    mot4->stop();
+    iCount = home_motor_4;
+    break;
+case home_motor_4:
+    if(mot3->getLocation() > 800000LL)
+        break;
+    mot4->setDefaultus(0,0);
+    mot4->GoHome();
+    iCount = go_to_900um;
+    break;
+case go_to_900um:
+    if(mot1->isBusy())
+        break;
+    if(mot2->isBusy())
+        break;
+    if(mot3->isBusy())
+        break;
+    if(mot4->isBusy())
+        break;
+    mot1->setToGo(290000LL);
+    mot2->setToGo(290000LL);
+    mot3->setToGo(290000LL);
+    mot4->setToGo(290000LL);
+    mot1->Move();
+    mot2->Move();
+    mot3->Move();
+    mot4->Move();
+    iCount = low_speed_motor;
+    break;
+case low_speed_motor:
+    if(mot1->isBusy())
+        break;
+    if(mot2->isBusy())
+        break;
+    if(mot3->isBusy())
+        break;
+    if(mot4->isBusy())
+        break;
+    mot1->setSpeedUS(500,2000);
+    mot2->setSpeedUS(500,2000);
+    mot3->setSpeedUS(500,2000);
+    mot4->setSpeedUS(500,2000);
+    iCount = go_home_low_speed;
+    break;
+case go_home_low_speed:
+    mot1->GoHome();
+    mot2->GoHome();
+    mot3->GoHome();
+    mot4->GoHome();
+    iCount = wait_motor_stop;
+    break;
+case wait_motor_stop:
+    if(mot1->isBusy())
+        break;
+    if(mot2->isBusy())
+        break;
+    if(mot3->isBusy())
+        break;
+    if(mot4->isBusy())
+        break;
+    iCount = set_default_speed;
+    break;
+case set_default_speed:
+    mot1->setDefaultus(0,0);
+    mot2->setDefaultus(0,0);
+    mot3->setDefaultus(0,0);
+    mot4->setDefaultus(0,0);
+    iCount = do_nothing;
+    break;
+default:
+    iCount = do_nothing;
+    break;
+}
+return !!(iCount);
+}
+void move_absolute(int32_t *ptr,
+                virtualMotor *mot1,
+                virtualMotor *mot2,
+                virtualMotor *mot3,
+                virtualMotor *mot4)
+{
+    if(ptr[0] != Absolute)
+        return;
+    if(ptr[1])
+    {
+        mot1->setToGo(ptr[1]);
+        mot1->Move();
+    }
+    if(ptr[2])
+    {
+        mot2->setToGo(ptr[2]);
+        mot2->Move();
+    }
+    if(ptr[3])
+    {
+        mot3->setToGo(ptr[3]);
+        mot3->Move();
+    }
+    if(ptr[4])
+    {
+        mot4->setToGo(ptr[4]);
+        mot4->Move();
+    }
+}
+void move_releative(int32_t *ptr,
+                virtualMotor *mot1,
+                virtualMotor *mot2,
+                virtualMotor *mot3,
+                virtualMotor *mot4)
+{
+    if(ptr[0] != Reletive)
+        return;
+    if(ptr[1])
+    {
+        mot1->setReleativeToGo(ptr[1]);
+        mot1->Move();
+    }
+    if(ptr[2])
+    {
+        mot2->setReleativeToGo(ptr[2]);
+        mot2->Move();
+    }
+    if(ptr[3])
+    {
+        mot3->setReleativeToGo(ptr[3]);
+        mot3->Move();
+    }
+    if(ptr[4])
+    {
+        mot4->setReleativeToGo(ptr[4]);
+        mot4->Move();
+    }
+}
+void set_speed(int32_t *ptr,
+                virtualMotor *mot1,
+                virtualMotor *mot2,
+                virtualMotor *mot3,
+                virtualMotor *mot4)
+{
+    if(ptr[0] != Speed)
+        return;
+    if(ptr[1])
+    {
+        if(ptr[1] != 1)
+            mot1->setSpeedUS(ptr[1],0);
+        else
+            mot1->setDefaultus(0,0);
+    }
+    if(ptr[2])
+    {
+        if(ptr[2] != 1)
+            mot2->setSpeedUS(ptr[2],0);
+        else
+            mot2->setDefaultus(0,0);
+    }
+    if(ptr[3])
+    {
+        if(ptr[3] != 1)
+            mot3->setSpeedUS(ptr[3],0);
+        else
+            mot3->setDefaultus(0,0);
+    }
+    if(ptr[4])
+    {
+        if(ptr[4] != 1)
+            mot4->setSpeedUS(ptr[4],0);
+        else
+            mot4->setDefaultus(0,0);
+    }
+}
+bool move_motor(uint8_t start,
+                virtualMotor *mot1,
+                virtualMotor *mot2,
+                virtualMotor *mot3,
+                virtualMotor *mot4)
+{
+    static volatile uint16_t iLine = 0;
+    static volatile uint64_t t_mili = 0;
+    if((start == 1) && (iLine == 0))
+    {
+        iLine = 1;
+    }
+    if(iLine == 0)
+        return false;
+    if(t_mili > time_us_64())
+        return true;
+    t_mili = time_us_64() + 800000ULL;
+    if((mot1->isBusy()) || (mot2->isBusy()) || (mot3->isBusy()) || (mot4->isBusy()))
+        return true;
+    if(position_speed[iLine][0] == END_OF_Command)
+    {
+        iLine = 0;
+        return false;
+    }
+    if(position_speed[iLine][0] == Absolute)
+        move_absolute(&position_speed[iLine][0],mot1,mot2,mot3,mot4);
+    if(position_speed[iLine][0] == Reletive)
+        move_releative(&position_speed[iLine][0],mot1,mot2,mot3,mot4);
+    if(position_speed[iLine][0] == Speed)
+        set_speed(&position_speed[iLine][0],mot1,mot2,mot3,mot4);
+    iLine++;
+
+return false;
+}
+int32_t position_speed[][5] =
+{
+    {Absolute,0,0,0,0}, // DO NOT DELETE THIS LINE
+
+    {Absolute,500000,500000,500000,500000},
+    {Absolute,900000,900000,900000,0},
+    {Reletive,0,-400000,-400000,0},
+    {Speed,500,500,500,500},
+    {Reletive,200000,200000,200000,0},
+    {Speed,0,1,0,1},
+    {Absolute,0,0,0,1100000},
+    {Reletive,200000,200000,200000,0},
+
+    //DO NOT DELETE BELLOW LINE
+    {END_OF_Command,0,0,0,0},
+    {END_OF_Command,0,0,0,0},
+};

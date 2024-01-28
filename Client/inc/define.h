@@ -136,6 +136,7 @@ typedef enum{
     C_DSC_OPCODE_REG_STATUS = 4,
     C_DSC_OPCODE_REG_START_STOP = 5,
     C_DSC_OPCODE_REG_PID_CONFIG = 6,
+    C_DSC_OPCODE_REG_Releative_TOGO = 7,
 
     C_DSC_ARRAY_CONFIG_REG_CONF_1byte = 0,
     C_DSC_ARRAY_CONFIG_REG_CONF_2byte = 1,
@@ -155,6 +156,7 @@ typedef enum{
     C_DSC_ARRAY_SPEED_REG_HIGH_us_2byte = 3,
 
     C_DSC_ARRAY_TOGO_REG_index = 1,
+    C_DSC_ARRAY_Releative_TOGO_REG_index = 1,
 
     C_DSC_ARRAY_STATUS_REPORT_1byte = 0,
     C_DSC_ARRAY_STATUS_LOCATION_index = 1,

@@ -34,6 +34,7 @@ private:
     void config_register_handle(uint8_t *data);
     void speed_register_handle(uint8_t *data);
     void togo_register_handle(uint8_t *data);
+    void Releative_togo_register_handle(uint8_t *data);
     void status_register_handle(uint8_t iStat);
     void Star_Stop_register_handle(uint8_t *data);
     void PID_register_handle(uint8_t *data);

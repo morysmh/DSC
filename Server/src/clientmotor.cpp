@@ -84,13 +84,11 @@ void virtualMotor::setEnableEncoder(bool iVal)
 void virtualMotor::setSpeedUS(uint16_t iLow,uint16_t iHigh)
 {
     uint8_t ptmpBuff[10] = {};
-    if(iLow <= 15LL)
-        iLow = 15LL;
+    if(iLow >= 15LL)
+        pLowDelayPulse = iLow;
 
-    if(iHigh <= 50LL)
-        iHigh = 50LL;
-    pLowDelayPulse = iLow;
-    pHighDelayPulse = iHigh;
+    if(iHigh >= 50LL)
+        pHighDelayPulse = iHigh;
     ptmpBuff[C_DSC_ARRAY_SPEED_REG_HIGH_us_1byte] = pHighDelayPulse & 0xFF;
     ptmpBuff[C_DSC_ARRAY_SPEED_REG_HIGH_us_2byte] = (pHighDelayPulse>>8) & 0xFF;
     ptmpBuff[C_DSC_ARRAY_SPEED_REG_LOW_us_1byte] = pLowDelayPulse & 0xFF;
@@ -98,11 +96,13 @@ void virtualMotor::setSpeedUS(uint16_t iLow,uint16_t iHigh)
     ptrCAN->send_data(pAddressMotor,C_DSC_OPCODE_REG_SPEED,ptmpBuff);
 
 }
-void virtualMotor::setDefaultLow(uint16_t iVal)
+void virtualMotor::setDefaultus(uint16_t iLow,uint16_t iHigh)
 {
-    if(iVal <= 15)
-        iVal = 15;
-    pDefLow = iVal;
+    if(iLow >= 15)
+        pDefLow = iLow;
+    if(iHigh >= 100)
+        pDefHigh = iHigh;
+    setSpeedUS(pDefLow,pDefHigh);
 }
 void virtualMotor::setOtherMotorSensorStop(uint8_t iMotNo)
 {
@@ -113,6 +113,14 @@ void virtualMotor::setToGo(int32_t itogo)
     uint8_t ptmpBuff[10] = {};
     ptrCAN->int32_to_ptrint8(itogo,&ptmpBuff[C_DSC_ARRAY_TOGO_REG_index]);
     ptrCAN->send_data(pAddressMotor,C_DSC_OPCODE_REG_TOGO,ptmpBuff);
+}
+void virtualMotor::setReleativeToGo(int32_t itogo)
+{
+    uint8_t ptmpBuff[10] = {};
+    itogo = itogo + pCurrentPosition;
+    setToGo(itogo);
+    //ptrCAN->int32_to_ptrint8(itogo,&ptmpBuff[C_DSC_ARRAY_Releative_TOGO_REG_index]);
+    //ptrCAN->send_data(pAddressMotor,C_DSC_OPCODE_REG_Releative_TOGO,ptmpBuff);
 }
 void virtualMotor::stop()
 {

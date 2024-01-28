@@ -191,6 +191,10 @@ void StepMotor::set_move_command_togo(int32_t i_togo)
 {
     p_wait_start_command_togo = i_togo;
 }
+void StepMotor::set_move_command_togo_releative(int32_t i_togo)
+{
+    p_wait_start_command_togo = (p_current_location + i_togo);
+}
 void StepMotor::stop()
 {
     p_togo_Location = p_current_location;

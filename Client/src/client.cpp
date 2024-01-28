@@ -110,9 +110,13 @@ void Client::handle_message(uint8_t *rbuff,uint8_t motNO,uint8_t iPara)
         break;
     case C_DSC_OPCODE_REG_START_STOP:
         Star_Stop_register_handle(rbuff);
+        send_LocationData(true);
         break;
     case C_DSC_OPCODE_REG_PID_CONFIG:
         PID_register_handle(rbuff);
+        break;
+    case C_DSC_OPCODE_REG_Releative_TOGO:
+        Releative_togo_register_handle(rbuff);
         break;
         
         default:
@@ -141,6 +145,12 @@ void Client::togo_register_handle(uint8_t *data)
     int32_t oToGo = 0;
     o_can->ptr8_to_int32(&data[C_DSC_ARRAY_TOGO_REG_index],&oToGo);
     o_stepmotor->set_move_command_togo(oToGo);
+}
+void Client::Releative_togo_register_handle(uint8_t *data)
+{
+    int32_t oToGo = 0;
+    o_can->ptr8_to_int32(&data[C_DSC_ARRAY_Releative_TOGO_REG_index],&oToGo);
+    o_stepmotor->set_move_command_togo_releative(oToGo);
 }
 void Client::status_register_handle(uint8_t iStat)
 {

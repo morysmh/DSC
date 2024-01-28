@@ -43,6 +43,8 @@ void CanCotroll::send_status(int32_t iLocation,bool isMoving, bool iSensorBottom
     if(pt_interval > time_us_64())
         return;
     pt_interval = time_us_64() + c_interval_status;
+    if(isMoving == false)
+        pt_interval = time_us_64() + (c_interval_status * 5);
     pSendAvailable = true;
     p_canSend.header.rtr = 0;
     p_canSend.header.length = 6;

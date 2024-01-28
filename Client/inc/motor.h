@@ -18,6 +18,7 @@ public:
     void set_PID(int32_t i_P,int32_t i_I,int32_t i_D);
     void set_togo_Location(int32_t i_togo);
     void set_move_command_togo(int32_t i_togo);
+    void set_move_command_togo_releative(int32_t i_togo);
     void set_current_location(int32_t i_CL){p_current_location = i_CL;}
     void set_default_direction(bool i_def){p_def_direction = i_def;}
     void set_low_us(int32_t i_val);
