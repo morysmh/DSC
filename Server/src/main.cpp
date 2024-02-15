@@ -11,7 +11,26 @@
 #define Absolute 1
 #define Reletive 2
 #define Speed 3
+#define DefSpeed 1
+#define NoChange 0
 #define END_OF_Command 4
+typedef enum{
+    do_nothing = 0,
+    home_motor_highspeed_except4,
+    home_motor_4,
+    go_to_900um,
+    low_speed_motor,
+    go_home_low_speed,
+    wait_motor_stop,
+    set_default_speed,
+    stop_Homing_proceger,
+    start_Homing
+}homing;
+typedef enum{
+    noAction = 0,
+    Start_Moves,
+    Stop_Moves
+}moveMotor;
 
 #ifdef __cplusplus
 extern "C"
@@ -72,7 +91,7 @@ void move_absolute(int32_t *ptr,
                 virtualMotor *mot3,
                 virtualMotor *mot4);
 int main()
-{
+   {
     int64_t t_mili_reset_interval = 0;
     const int64_t c_reset_interval = 2500000LL;
     LED_Interval Pico_LED;
@@ -157,8 +176,8 @@ int main()
     while (1)
     {
         lcd_refresh_data(&mot1,&mot2,&mot3,&mot4);
-        persision_home(0,&mot1,&mot2,&mot3,&mot4);
-        move_motor(0,&mot1,&mot2,&mot3,&mot4);
+        persision_home(do_nothing,&mot1,&mot2,&mot3,&mot4);
+        move_motor(noAction,&mot1,&mot2,&mot3,&mot4);
         s_reset.run();
         s_start.run();
         dev_can.run();
@@ -190,14 +209,16 @@ int main()
                 if(t_mili_reset_interval > time_us_64() )
                     continue;
                 t_mili_reset_interval = time_us_64() + c_reset_interval;
-                persision_home(1,&mot1,&mot2,&mot3,&mot4);
+                move_motor(Stop_Moves,&mot1,&mot2,&mot3,&mot4);
+                persision_home(start_Homing,&mot1,&mot2,&mot3,&mot4);
             }
         }
         if(s_start.is_triged())
         {
             if(s_start.get_sensor_stat() == 1)
             {
-                move_motor(1,&mot1,&mot2,&mot3,&mot4);
+                persision_home(stop_Homing_proceger,&mot1,&mot2,&mot3,&mot4);
+                move_motor(Start_Moves,&mot1,&mot2,&mot3,&mot4);
                 //brodcast.start_moving();
                 //brodcast.stop();
             }
@@ -538,16 +559,6 @@ void lcd_refresh_data(virtualMotor *mot1,virtualMotor *mot2,virtualMotor *mot3,v
     lcd_buffer_write(r_lcdbuff,mot3,2);
     lcd_buffer_write(r_lcdbuff,mot4,3);
 }
-typedef enum{
-    do_nothing = 0,
-    home_motor_highspeed_except4,
-    home_motor_4,
-    go_to_900um,
-    low_speed_motor,
-    go_home_low_speed,
-    wait_motor_stop,
-    set_default_speed,
-}homing;
 bool persision_home(uint8_t iStart,
                     virtualMotor *mot1,
                     virtualMotor *mot2,
@@ -556,7 +567,11 @@ bool persision_home(uint8_t iStart,
 {
 volatile static uint8_t iCount = 0;
 volatile static uint64_t t_mili = 0;
-if((iStart == 1) && (iCount == do_nothing))
+if(iStart == stop_Homing_proceger)
+{
+    iCount = do_nothing;
+}
+if((iStart == start_Homing) && (iCount == do_nothing))
 {
     iCount = home_motor_highspeed_except4;
 }
@@ -573,7 +588,7 @@ case home_motor_highspeed_except4:
     mot1->setDefaultus(0,0);
     mot2->setDefaultus(0,0);
     mot3->setDefaultus(0,0);
-    mot1->GoHome();
+    mot1->stop();
     mot2->GoHome();
     mot3->GoHome();
     mot4->stop();
@@ -584,6 +599,7 @@ case home_motor_4:
         break;
     mot4->setDefaultus(0,0);
     mot4->GoHome();
+    mot1->GoHome();
     iCount = go_to_900um;
     break;
 case go_to_900um:
@@ -734,9 +750,9 @@ void set_speed(int32_t *ptr,
     if(ptr[3])
     {
         if(ptr[3] != 1)
-            mot3->setSpeedUS(ptr[3],0);
+            mot3->setSpeedUS(ptr[3],ptr[3]+1500);
         else
-            mot3->setDefaultus(0,0);
+            mot3->setDefaultus(0,0); 
     }
     if(ptr[4])
     {
@@ -754,7 +770,11 @@ bool move_motor(uint8_t start,
 {
     static volatile uint16_t iLine = 0;
     static volatile uint64_t t_mili = 0;
-    if((start == 1) && (iLine == 0))
+    if(start == Stop_Moves)
+    {
+        iLine = 0;
+    }
+    if((start == Start_Moves) && (iLine == 0))
     {
         iLine = 1;
     }
@@ -762,7 +782,7 @@ bool move_motor(uint8_t start,
         return false;
     if(t_mili > time_us_64())
         return true;
-    t_mili = time_us_64() + 800000ULL;
+    t_mili = time_us_64() + 200000ULL;
     if((mot1->isBusy()) || (mot2->isBusy()) || (mot3->isBusy()) || (mot4->isBusy()))
         return true;
     if(position_speed[iLine][0] == END_OF_Command)
@@ -782,18 +802,72 @@ return false;
 }
 int32_t position_speed[][5] =
 {
-    {Absolute,0,0,0,0}, // DO NOT DELETE THIS LINE
+    {Absolute,NoChange,NoChange,NoChange,NoChange}, // DO NOT DELETE THIS LINE
+    //**************Change the Code Bellow***************
+    {Speed,DefSpeed,DefSpeed,DefSpeed,DefSpeed},
+    {Absolute,1050000,1200000,12000,18250000},// above sensor
+    {Reletive,NoChange,NoChange,700000,NoChange},// first touch motor 3
+    {Reletive,NoChange,NoChange,-20000,NoChange},
 
-    {Absolute,500000,500000,500000,500000},
-    {Absolute,900000,900000,900000,0},
-    {Reletive,0,-400000,-400000,0},
-    {Speed,500,500,500,500},
-    {Reletive,200000,200000,200000,0},
-    {Speed,0,1,0,1},
-    {Absolute,0,0,0,1100000},
-    {Reletive,200000,200000,200000,0},
+    {Speed,NoChange,NoChange,7000,NoChange},
+    {Speed,NoChange,NoChange,7000,NoChange},
 
+    {Reletive,NoChange,NoChange,700000,NoChange},// exact touch motor 3
+
+    {Speed,DefSpeed,DefSpeed,DefSpeed,DefSpeed},
+
+    {Reletive,NoChange,NoChange,-100000,NoChange},
+    {Reletive,NoChange,-300000,NoChange,NoChange},
+    {Reletive,NoChange,NoChange,105000,NoChange},
+    {Reletive,NoChange,500000,NoChange,NoChange},// first touch motor 2
+    {Reletive,NoChange,NoChange,-100000,NoChange},
+    {Reletive,NoChange,-10000,NoChange,NoChange},
+
+    {Speed,NoChange,7000,NoChange,NoChange},
+    {Speed,NoChange,7000,NoChange,NoChange},
+
+    {Reletive,NoChange,NoChange,100000,NoChange},
+    {Reletive,NoChange,100000,NoChange,NoChange},// exact touch motor 2
+    {Reletive,NoChange,NoChange,-500000,NoChange},
+    {Reletive,NoChange,NoChange,NoChange,-7000000},
+
+    {Speed,DefSpeed,DefSpeed,DefSpeed,DefSpeed},
+    
+    {Reletive,NoChange,3300000,NoChange,NoChange},
+    {Reletive,NoChange,NoChange,745000,NoChange},// p1 tangent
+
+    {Speed,NoChange,NoChange,10000,NoChange},
+    {Speed,NoChange,NoChange,10000,NoChange},
+
+    {Reletive,NoChange,NoChange,200000,NoChange},// p1 grind
+    {Reletive,NoChange,-1327000,NoChange,NoChange},// p2 m2 back
+    {Reletive,200000,NoChange,NoChange,NoChange},// p2 m1 adjust
+
+    {Speed,DefSpeed,DefSpeed,DefSpeed,DefSpeed},
+
+    {Reletive,NoChange,NoChange,793500,NoChange},// p2 tangent
+
+    {Speed,NoChange,NoChange,10000,NoChange},
+    {Speed,NoChange,NoChange,10000,NoChange},
+
+    {Reletive,NoChange,NoChange,20000,NoChange},// p2-1 grind
+
+    {Speed,DefSpeed,DefSpeed,DefSpeed,DefSpeed},
+
+    {Reletive,NoChange,NoChange,-208500,NoChange},// tabdil m3 
+    {Reletive,-390000,NoChange,NoChange,NoChange},// tabdil m1
+    {Reletive,NoChange,NoChange,170000,NoChange},// tangent p2-2
+
+    {Speed,NoChange,NoChange,10000,NoChange},
+    {Speed,NoChange,NoChange,10000,NoChange},
+
+    {Reletive,NoChange,NoChange,35000,NoChange},// grind p2-2
+    
+    {Speed,DefSpeed,DefSpeed,DefSpeed,DefSpeed},
+
+    {Absolute,NoChange,45000,45000,NoChange},// above sensor
+    {Absolute,20000,NoChange,NoChange,20000},// above sensor
     //DO NOT DELETE BELLOW LINE
-    {END_OF_Command,0,0,0,0},
-    {END_OF_Command,0,0,0,0},
+    {END_OF_Command,NoChange,NoChange,NoChange,NoChange},
+    {END_OF_Command,NoChange,NoChange,NoChange,NoChange},
 };
