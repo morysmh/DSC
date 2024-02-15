@@ -665,7 +665,7 @@ void move_absolute(int32_t *ptr,virtualMotor **ptrmot)
         return;
     for(uint i=0;i<4;i++)
     {
-        if(ptr[i+1] == 0)
+        if(ptr[i+1] == NoChange)
             continue;
         ptrmot[i]->setToGo(ptr[i+1]);
         ptrmot[i]->Move();
@@ -677,7 +677,7 @@ void move_releative(int32_t *ptr,virtualMotor **ptrmot)
         return;
     for(uint i=0;i<4;i++)
     {
-        if(ptr[i+1] == 0)
+        if(ptr[i+1] == NoChange)
             continue;
         ptrmot[i]->setReleativeToGo(ptr[i+1]);
         ptrmot[i]->Move();
@@ -689,14 +689,14 @@ void set_speed(int32_t *ptr,virtualMotor **ptrmot)
         return;
     for(uint i=0;i<4;i++)
     {
-        if(ptr[i+1] == 0)
+        if(ptr[i+1] == NoChange)
             continue;
         if(ptr[i+1] == DefSpeed)
         {
             ptrmot[i]->setDefaultus(0,0);
             continue;
         }
-        ptrmot[i]->setSpeedUS(ptr[i+1],0);
+        ptrmot[i]->setSpeedUS(ptr[i+1],ptr[i+1] + 1500);
     }
 }
 bool move_motor(uint8_t start,virtualMotor **ptrmot)
@@ -778,28 +778,28 @@ int32_t position_speed[][5] =
 
     {Speed,DefSpeed,DefSpeed,DefSpeed,DefSpeed},
 
-    {Reletive,NoChange,NoChange,793500,NoChange},// p2 tangent
+    {Reletive,NoChange,NoChange,775500,NoChange},// p2 tangent
 
     {Speed,NoChange,NoChange,10000,NoChange},
     {Speed,NoChange,NoChange,10000,NoChange},
 
-    {Reletive,NoChange,NoChange,20000,NoChange},// p2-1 grind
+    {Reletive,NoChange,NoChange,30000,NoChange},// p2-1 grind
 
     {Speed,DefSpeed,DefSpeed,DefSpeed,DefSpeed},
 
     {Reletive,NoChange,NoChange,-208500,NoChange},// tabdil m3 
     {Reletive,-390000,NoChange,NoChange,NoChange},// tabdil m1
-    {Reletive,NoChange,NoChange,170000,NoChange},// tangent p2-2
+    {Reletive,NoChange,NoChange,180000,NoChange},// tangent p2-2
 
     {Speed,NoChange,NoChange,10000,NoChange},
     {Speed,NoChange,NoChange,10000,NoChange},
 
-    {Reletive,NoChange,NoChange,35000,NoChange},// grind p2-2
+    {Reletive,NoChange,NoChange,30000,NoChange},// grind p2-2
     
     {Speed,DefSpeed,DefSpeed,DefSpeed,DefSpeed},
 
     {Absolute,NoChange,45000,45000,NoChange},// above sensor
-    {Absolute,20000,NoChange,NoChange,20000},// above sensor
+    {Absolute,30000,NoChange,NoChange,30000},// above sensor
     //DO NOT DELETE BELLOW LINE
     {END_OF_Command,NoChange,NoChange,NoChange,NoChange},
     {END_OF_Command,NoChange,NoChange,NoChange,NoChange},
