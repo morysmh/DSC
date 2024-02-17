@@ -25,6 +25,8 @@ void CanCotroll::handle_other_sensor()
 }
 void CanCotroll::handle_Self_OtherSensor_Status(uint8_t status)
 {
+    if(status == pOtherMotorStat)
+        return;
     pOtherMotorStat = status;
     pOtherSensorStatChange = true;
 }

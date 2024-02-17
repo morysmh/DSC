@@ -50,17 +50,13 @@ void StepMotor::run()
 }
 void StepMotor::set_MAX_us(int32_t i_val)
 {
-    if(i_val > 200000ULL) i_val = 20000ULL;
-    if(i_val < p_low_us_delay)
-        i_val = p_low_us_delay;
+    if(i_val > 200000ULL) i_val = 200000ULL;
     p_max_us_delay = i_val;
     p_max_minus_low  = p_max_us_delay - p_low_us_delay;
 }
 void StepMotor::set_low_us(int32_t i_val)
 {
-    if(i_val < 5) i_val = 5;
-    if(i_val > p_max_us_delay)
-        i_val = p_max_us_delay;
+    if(i_val < 10) i_val = 10;
     p_low_us_delay = i_val;
     p_max_minus_low  = p_max_us_delay - p_low_us_delay;
 }
