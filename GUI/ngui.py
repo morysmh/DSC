@@ -1,0 +1,292 @@
+import tkinter as tk
+from tkinter import *
+import os
+import sys
+import glob
+import serial
+import Step
+import re
+import time
+import guiclass
+allmotor = []
+portOpenCheck = 0
+def serial_ports():
+    """ Lists serial port names
+
+        :raises EnvironmentError:
+            On unsupported or unknown platforms
+        :returns:
+            A list of the serial ports available on the system
+    """
+    if sys.platform.startswith('win'):
+        ports = ['COM%s' % (i + 1) for i in range(256)]
+    elif sys.platform.startswith('linux') or sys.platform.startswith('cygwin'):
+        # this excludes your current terminal "/dev/tty"
+        ports = glob.glob('/dev/tty[A-Za-z]*')
+    elif sys.platform.startswith('darwin'):
+        ports = glob.glob('/dev/tty.*')
+    else:
+        raise EnvironmentError('Unsupported platform')
+
+    result = []
+    for port in ports:
+        try:
+            s = serial.Serial(port)
+            s.close()
+            result.append(port)
+        except (OSError, serial.SerialException):
+            pass
+    return result
+
+def convertPosLinear(pos):
+    isneg = 0
+    if(pos < 0):
+        isneg = 1
+        pos = pos * -1
+    xx = "nm"
+    if(pos > 1000):
+        xx = "um"
+        pos = pos / 1000
+    if(pos > 1000):
+        xx = "mm"
+        pos = pos / 1000
+    strval = str(pos) + xx
+    if isneg:
+        strval = '-' + str(pos) + xx
+    return strval
+
+def HomeMotor():
+    mot2.set_Position_Absoulute(10*(10**6))
+    mot3.HomeMotor(1)
+    mot4.HomeMotor(1)
+
+def zeroAllmotor():
+    mot1.HomeMotor(1)
+    mot2.HomeMotor(1)
+    mot3.HomeMotor(1)
+    mot4.HomeMotor(1)
+
+def shutMotor():
+    global allmotor
+    for i in allmotor:
+        i.shutmotor()
+
+
+def openPort():
+    global portOpenCheck 
+    if(clicked.get().startswith("COM") == False):
+        print("Not ON Windows")
+        return
+    portOpenCheck = 1
+    Step.openSerialPort(clicked.get())
+    Step.firstmotorRun()
+    global mot1,mot2,mot3,mot4
+    mot3.maxspeed = 950
+    mot1.maxspeed = 950
+    mot2.maxspeed = 50
+    mot4.lowspeed = 6000
+    #mot3.can_Go_Negetive()
+    global allmotor
+    for i in allmotor:
+        i.enable_comnmunicatin()
+        i.setspeed(i.maxspeed)
+
+
+def startaction(event):
+    global allmotor
+    global portOpenCheck 
+    global readstatValue
+    i = 0
+    while(readstatValue == 2):
+        i = i + 1
+    for i in allmotor:
+        i.send_Position_To_Step()
+    if portOpenCheck == 0:
+        return
+    refresh_Txt_section()
+    a = Step.readcomm()
+
+def actionHome(event):
+    HomeMotor()
+readstatValue = 0
+auto_grinde = 0
+
+def getPosition():
+    global readstatValue,auto_grinde
+    if (readstatValue == 0):
+        return
+    root.after(700,getPosition)              
+    readstatValue = 2
+    for i in range(1,5):
+        Step.sendCommand(motor=i,dest=Step.Ecom["C_Interface_Server"],\
+        reg=Step.Ecom["C_command_Encoder_get_position"],val = Step.Ecom["C_Interface_ENCODER"])
+    readstatValue = 1
+    if(auto_grinde == 1):
+        check_auto_grind_Command()
+
+filecsv = open("mycsv.csv","r")
+
+def check_auto_grind_Command():
+    global auto_grinde
+    global filecsv
+    global allmotor
+    if auto_grinde == 0:
+        return 0
+    if filecsv.closed:
+        filecsv = open("mycsv.csv","r")
+    isallzero = 0
+    for i in allmotor:
+        isallzero = isallzero + i.is_reachSetPos()
+    if isallzero != 4:
+        return 0
+    b = filecsv.readline().split(',')
+    if not b[0]:
+        change_auto_stat()
+        return 0
+    tmpvar = [re.sub("[^0-9.-]","",i) + "u" for i in b]
+    set_next_from_csv(tmpvar)
+    return 1
+
+def set_next_from_csv(indata):
+    global allmotor
+    global auto_grinde
+    if auto_grinde == 0:
+        return 0
+    b = -1
+    for i in allmotor:
+        b = b + 1
+        try:
+            c = indata[b]
+        except:
+            c = 'u'
+        if(c == 'u'):
+            continue
+        i.user_input_releative(c)
+    for i in allmotor:
+        i.send_Position_To_Step()
+    return 1
+
+def change_auto_stat():
+    global auto_grinde
+    global button_auto
+    global filecsv
+    if auto_grinde:
+        auto_grinde = 0
+        button_auto.config(bg="#263D42")
+        if not filecsv.closed:
+            filecsv.close()
+    else:
+        auto_grinde = 1
+        button_auto.config(bg="#81e381")
+
+def readmotorStatus():
+    global readStat
+    global readstatValue
+    if readstatValue:
+        readstatValue = 0
+        readStat.config(bg="#263D42")
+    else:
+        readstatValue = 1
+        readStat.config(bg="#81e381")
+        getPosition()
+
+
+def printvarcurrposi(i_val):
+    i_val = i_val.split(" ")
+    try:
+        if(int(i_val[2]) != 19):
+            return
+    except:
+        return
+    if(int(i_val[1]) == 1):
+        mot1.setmotorPos(convertPosLinear(int(i_val[3])))
+        mot1.set_read_position(int(i_val[3]))
+    if(int(i_val[1]) == 2):
+        mot2.setmotorPos(convertPosLinear(int(i_val[3])))
+        mot2.set_read_position(int(i_val[3]))
+    if(int(i_val[1]) == 3):
+        mot3.setmotorPos(convertPosLinear(int(i_val[3])))
+        mot3.set_read_position(int(i_val[3]))
+    if(int(i_val[1]) == 4):
+        mot4.setmotorPos(convertPosLinear(int(i_val[3])))
+        mot4.set_read_position(int(i_val[3]))
+
+def print_current_Pos( i_dat):
+    if(i_dat == ""):
+        return
+    s_a = i_dat.split("\n")
+    for i in s_a:
+        printvarcurrposi(i)
+
+def refresh_Txt_section():
+    global root
+    a = Step.readcomm()
+    print_current_Pos(a)
+    root.after(700,refresh_Txt_section)     
+
+def closeport():
+    Step.stopCommunication()
+
+root = tk.Tk()
+
+SerilList = serial_ports()
+clicked = StringVar()
+if(SerilList):
+    clicked.set(SerilList[0])
+else:
+    clicked.set("Select Port")
+
+basewidthGUI = 1400
+canvas = tk.Canvas(root, height=800, width=basewidthGUI, bg="#253D42")
+canvas.pack()
+frame = tk.Frame(root, bg="white")
+frame.place(width=basewidthGUI-basewidthGUI*.1, height=50,relx=0.05, rely=0.01)
+
+drop = OptionMenu(frame, clicked, *SerilList)
+drop.place(relx=0,rely=0.2)
+
+openSerialPort = tk.Button(frame, text="Open Port", padx=10, pady=5, fg="white", bg="#263D42",command=openPort)
+openSerialPort.place(relx=0.2,rely= 0.2)
+
+closePort = tk.Button(frame, text="close port", padx=10, pady=5, fg="white", bg="#263D42",command=closeport)
+closePort.place(relx=0.4,rely= 0.2)
+
+HomeAll = tk.Button(frame, text="Home All", padx=10, pady=5, fg="white", bg="#263D42",command=HomeMotor)
+HomeAll.place(relx=0.5,rely= 0.2)
+
+readStat = tk.Button(frame, text="read Stat", padx=10, pady=5, fg="white", bg="#263D42",command=readmotorStatus)
+readStat.place(relx=0.6,rely= 0.2)
+
+zeroAll = tk.Button(frame, text="Zero All", padx=10, pady=5, fg="white", bg="#263D42",command=zeroAllmotor)
+zeroAll.place(relx=0.7,rely= 0.2)
+
+ShutAllMotor = tk.Button(frame, text="shut Motor", padx=10, pady=5, fg="white", bg="#263D42",command=shutMotor)
+ShutAllMotor.place(relx=0.8,rely= 0.2)
+
+button_auto = tk.Button(frame, text="auto", padx=10, pady=5, fg="white", bg="#263D42",command=change_auto_stat)
+button_auto.place(relx=0.9,rely= 0.2)
+
+mot1 = guiclass.guiclass(root,1,0.04,0.11)
+mot1.bindkeys('D','A','d','a')
+mot2 = guiclass.guiclass(root,2,0.28,0.11)
+mot2.bindkeys('E','Q','e','q')
+mot3 = guiclass.guiclass(root,3,0.52,0.11)
+mot3.bindkeys('O','I','o','i')
+mot4 = guiclass.guiclass(root,4,0.76,0.11)
+mot4.bindkeys('W','S','w','s')
+allmotor.append(mot1)
+allmotor.append(mot2)
+allmotor.append(mot3)
+allmotor.append(mot4)
+
+
+
+
+root.bind('!',mot1.HomeMotor)
+root.bind('@',mot2.HomeMotor)
+root.bind('#',mot3.HomeMotor)
+root.bind('$',mot4.HomeMotor)
+
+root.bind("<space>",startaction)
+root.mainloop()
+Step.stopCommunication()

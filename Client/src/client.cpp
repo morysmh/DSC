@@ -127,7 +127,7 @@ void Client::handle_message(uint8_t *rbuff,uint8_t motNO,uint8_t iPara)
 void Client::speed_register_handle(uint8_t *data)
 {
     uint16_t rLow = 0;
-    uint16_t rHigh = 0;
+    uint16_t rHigh = 0,tmp = 0;
 
     rLow = data[C_DSC_ARRAY_SPEED_REG_LOW_us_2byte];
     rLow = (rLow<<8L);
@@ -136,6 +136,14 @@ void Client::speed_register_handle(uint8_t *data)
     rHigh = data[C_DSC_ARRAY_SPEED_REG_HIGH_us_2byte];
     rHigh = (rHigh<<8L);
     rHigh |= data[C_DSC_ARRAY_SPEED_REG_HIGH_us_1byte];
+
+    if(rLow > rHigh)
+    {
+        tmp = rLow;
+        rLow = rHigh;
+        rHigh = tmp;
+    }
+
 
     o_stepmotor->set_low_us(rLow);
     o_stepmotor->set_MAX_us(rHigh);

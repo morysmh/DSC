@@ -1,6 +1,7 @@
 # buld directory
 build/
 .vscode/
+__pycache__/
 # Prerequisites
 *.d
 
