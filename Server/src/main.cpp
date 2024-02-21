@@ -70,7 +70,8 @@ void Usart_init_main();
 void Usart_init_wifiTest();
 void Enable_A4498();
 void init_board_config();
-void handle_pc_communication(int32_t i_data,ServerCAN *dev);
+void handle_pc_communication(int32_t i_data,ServerCAN *dev,virtualMotor **mot);
+void send_to_pc(int32_t iLocation,bool iBottomSensorStat,bool iTopSensorStat,bool iMotorMoving,uint8_t iMorNO);
 void for_test_only();
 void lcd_refresh_data(virtualMotor **ptrmot);
 bool persision_home(uint8_t start,virtualMotor **ptrmot);
@@ -183,7 +184,7 @@ int main()
         if((r_tmp_input <= 255) && (r_tmp_input >= 0))
         {
             pc_active = true;
-            handle_pc_communication(r_tmp_input,&dev_can);
+            handle_pc_communication(r_tmp_input,&dev_can,ptrAllMot);
         }
         if(dev_can.read_motLocation(&iLocation,&BotSensor,&TopSensor,&MotorMoving,&imotNO));
         {
@@ -191,9 +192,15 @@ int main()
             mot2.readCAN(iLocation,BotSensor,TopSensor,MotorMoving,imotNO);
             mot3.readCAN(iLocation,BotSensor,TopSensor,MotorMoving,imotNO);
             mot4.readCAN(iLocation,BotSensor,TopSensor,MotorMoving,imotNO);
+            if(pc_active)
+            {
+                send_to_pc(iLocation,BotSensor,TopSensor,MotorMoving,imotNO);
+            }
         }
         if(pc_active)
+        {
             continue;
+        }
         if(s_reset.is_triged())
         {
             if(s_reset.get_sensor_stat() == 1)
@@ -435,7 +442,7 @@ void pio_irq_handler()
     }
     pio0_hw->irq = 3;
 }
-void handle_pc_communication(int32_t i_data,ServerCAN *dev)
+void handle_pc_communication(int32_t i_data,ServerCAN *dev,virtualMotor **mot)
 {
     static volatile uint8_t r_buff[40] = {};
     static volatile uint8_t r_indx = 0;
@@ -454,6 +461,41 @@ void handle_pc_communication(int32_t i_data,ServerCAN *dev)
     r_indx = 0;
     //TODO handler communication from PC
     //dev->send_data(r_buff[1],i_val,r_buff[0]);
+    if(r_buff[0] >= 4)
+        return;
+    i_val = 0;
+    for(int i=0;i<4;i++)
+    {
+        i_val |= r_buff[i+2];
+        i_val = (i_val<<8ULL);
+    }
+    if(r_buff[1] == PC_SETTOGO)
+    {
+        mot[r_buff[0]]->setToGo(i_val);
+    }
+    else if(r_buff[1] == PC_SetSpeed)
+    {
+        mot[r_buff[0]]->setSpeedUS(i_val,i_val + 1500);
+    }
+    else if(r_buff[1] == PC_MoveMotor)
+    {
+        mot[r_buff[0]]->Move();
+    }
+    else if(r_buff[1] == PC_MoveAll)
+    {
+        for(int i=0;i<4;i++)
+            mot[i]->Move();
+    }
+    else if(r_buff[1] == PC_SetDefaulSpeed)
+    {
+        mot[r_buff[0]]->setDefaultus(0,0);
+    }
+}
+void send_to_pc(int32_t iLocation,bool iBottomSensorStat,bool iTopSensorStat,bool iMotorMoving,uint8_t iMorNO)
+{
+    int32_t mostat;
+    mostat = (iBottomSensorStat<<3) | (iTopSensorStat<<2) | (iMotorMoving<<1);
+    printf("%d %d %d \n\r",(int32_t)iMorNO,iLocation,mostat);
 }
 void for_test_only()
 {

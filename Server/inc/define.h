@@ -85,41 +85,11 @@ typedef struct
 
 typedef enum{
     C_Server_ADDRESS_CAN = 0xFF,
-    C_Command_NULL = 0,
-    C_command_STEP_Pulse_set_STOP = 1,
-    C_command_STEP_Pulse_set_step = 2,
-    C_command_STEP_Pulse_set_duration = 3,
-    C_command_STEP_Pulse_set_acc = 4,
-    C_command_STEP_Pulse_set_interval_acc = 5,
-    C_command_STEP_Pulse_set_MAX = 6,
-    C_command_STEP_Pulse_set_min = 7,
-    C_command_STEP_Pulse_get_remain = 8,
-
-    C_command_STEP_CTRL_set_pulse_per_100mm = 9,
-    C_command_STEP_CTRL_set_microstep = 10,
-    C_command_STEP_CTRL_set_direction_default = 11,
-    C_command_STEP_CTRL_set_endstop = 12,
-    C_command_STEP_CTRL_set_topstop = 13,
-    C_command_STEP_CTRL_get_current_position = 14,
-    C_command_STEP_CTRL_DisableMotor = 15,
-    C_command_STEP_CTRL_EnableMotor = 16,
-    C_command_STEP_CTRL_set_TO_GO_nm = 17,
-    C_command_STEP_CTRL_set_encoder_feedback = 18,
-
-    C_command_Encoder_get_position = 19,
-    C_command_Encoder_set_zero = 20,
-    C_command_Encoder_set_nm_per_pulse = 21,
-    C_command_Encoder_get_nm_pp = 22,
-    C_command_Encoder_set_direction = 23,
-    C_command_STEP_CTRL_go_home = 24,
-
-    C_command_Keys_get_is_min_trig = 25,
-    C_command_Keys_get_is_MAX_trig = 26,
-    C_command_Keyd_default_min = 27,
-    C_command_Keyd_default_MAX = 28,
-    C_command_STEP_CTRL_Home_Direction = 29,
-
-    C_command_STEP_Pulse_get_duration = 30
+    PC_SETTOGO = 1,
+    PC_SetSpeed = 2,
+    PC_MoveMotor = 3,
+    PC_MoveAll = 4,
+    PC_SetDefaulSpeed = 5
 
 
 }ENUM_Command_List;
