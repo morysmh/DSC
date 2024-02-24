@@ -82,7 +82,7 @@ void move_releative(int32_t *ptr,virtualMotor **ptrmot);
 void move_absolute(int32_t *ptr,virtualMotor **ptrmot);
 
 int main()
-   {
+{
     int64_t t_mili_reset_interval = 0;
     const int64_t c_reset_interval = 2500000LL;
     LED_Interval Pico_LED;
@@ -99,7 +99,6 @@ int main()
     bool BotSensor,TopSensor,MotorMoving;
 
 
-
     Pico_LED.OFF = 340000;
     Pico_LED._ON = 200000;
     Pico_LED.lastCheck = 0;
@@ -114,6 +113,7 @@ int main()
     lcd_init(14,15);
     lcd_setCursor(0,0);
     lcd_print("raw data");
+    printf("Test uart");
 
     //for_test_only();
     ServerCAN dev_can(1);
@@ -130,36 +130,35 @@ int main()
     s_reset.enable();
 
     mot1.setEnableEncoder(true);
-    mot1.setSensorBottomNormalStat(true);
+    mot1.setSensorBottomNormalStat(false);
+    mot1.setSensorTOPNormalStat(false);
     mot1.setDir(false);
     mot1.setDirEncoder(false);
-    mot1.setSpeedUS(200LL,1500LL);
-    mot1.setDefaultus(200LL,1500LL);
+    mot1.setDefaultus(400LL,1500LL);
     mot1.synchConfig();
 
     mot2.setEnableEncoder(true);
     mot2.setDir(false);
     mot2.setDirEncoder(false);
-    mot2.setSpeedUS(25,1500LL);
-    mot2.setDefaultus(25,1500);
-    mot2.setOtherMotorSensorStop(2);
+    mot2.setSensorBottomNormalStat(false);
+    mot2.setSensorTOPNormalStat(false);
+    mot2.setDefaultus(65,1500);
     mot2.synchConfig();
 
     mot3.setEnableEncoder(true);
     mot3.setSensorBottomNormalStat(false);
+    mot3.setSensorTOPNormalStat(false);
     mot3.setDir(false);
     mot3.setDirEncoder(false);
-    mot3.setSpeedUS(25,1500LL);
-    mot3.setDefaultus(25,1500);
-    mot3.setOtherMotorSensorStop(2);
+    mot3.setDefaultus(400,1500LL);
     mot3.synchConfig();
 
-    mot4.setEncoder_nm(500LL);
+    mot4.setEnableEncoder(true);
     mot4.setSensorBottomNormalStat(false);
+    mot4.setSensorTOPNormalStat(false);
     mot4.setDir(false);
     mot4.setDirEncoder(false);
-    mot4.setSpeedUS(25,1500LL);
-    mot4.setDefaultus(25,1500);
+    mot4.setDefaultus(65,1500);
     mot4.synchConfig();
 
 
@@ -448,47 +447,68 @@ void handle_pc_communication(int32_t i_data,ServerCAN *dev,virtualMotor **mot)
     static volatile uint8_t r_indx = 0;
     static volatile uint64_t t_mili = 0;
     static volatile int32_t i_val = 0;
-    const uint64_t c_delay_Between_Command = 10000ULL;
+    const uint64_t c_delay_Between_Command = 25000ULL;
+    static uint8_t motno,reg;
+    volatile static uint16_t counter_Message = 0;
     if(t_mili < time_us_64())
-        r_indx = 0;
-    if(r_indx >= 16)
         r_indx = 0;
     t_mili = time_us_64() + c_delay_Between_Command;
     r_buff[r_indx] = (i_data & 0xFFLL);
     r_indx++;
-    if(r_indx < 9)
+    if(r_indx <= 5)
         return;
     r_indx = 0;
+    counter_Message++;
     //TODO handler communication from PC
     //dev->send_data(r_buff[1],i_val,r_buff[0]);
-    if(r_buff[0] >= 4)
+    motno = r_buff[0] - 1;
+    if(motno >= 4)
         return;
     i_val = 0;
+    reg = r_buff[1];
     for(int i=0;i<4;i++)
     {
+        i_val = ((int32_t)i_val<<8L);
         i_val |= r_buff[i+2];
-        i_val = (i_val<<8ULL);
     }
-    if(r_buff[1] == PC_SETTOGO)
+    if(reg == PC_SETTOGO)
     {
-        mot[r_buff[0]]->setToGo(i_val);
+        mot[motno]->setToGo(i_val);
     }
-    else if(r_buff[1] == PC_SetSpeed)
+    else if(reg == PC_SetSpeed)
     {
-        mot[r_buff[0]]->setSpeedUS(i_val,i_val + 1500);
+        mot[motno]->setSpeedUS(i_val,i_val + 1500);
     }
-    else if(r_buff[1] == PC_MoveMotor)
+    else if(reg == PC_MoveMotor)
     {
-        mot[r_buff[0]]->Move();
+        mot[motno]->Move();
     }
-    else if(r_buff[1] == PC_MoveAll)
+    else if(reg == PC_MoveAll)
     {
         for(int i=0;i<4;i++)
             mot[i]->Move();
     }
-    else if(r_buff[1] == PC_SetDefaulSpeed)
+    else if(reg == PC_SetDefaulSpeed)
     {
-        mot[r_buff[0]]->setDefaultus(0,0);
+        mot[motno]->setDefaultus(0,0);
+    }
+    else if(reg == PC_DisableMotor)
+    {
+        mot[motno]->setEnableMotor(false);
+        mot[motno]->synchConfig();
+    }
+    else if(reg == PC_EnableMotor)
+    {
+        mot[motno]->setEnableMotor(true);
+        mot[motno]->synchConfig();
+    }
+    else if(reg == PC_GoHome)
+    {
+        mot[motno]->GoHome();
+    }
+    else if(reg == PC_PersiceHome)
+    {
+        persision_home(start_Homing,mot);
     }
 }
 void send_to_pc(int32_t iLocation,bool iBottomSensorStat,bool iTopSensorStat,bool iMotorMoving,uint8_t iMorNO)
@@ -502,12 +522,13 @@ void for_test_only()
     int32_t iLocation = 0;
     bool BotSensor,TopSensor,MotorMoving;
     uint8_t imotNO;
-    int8_t motNO;
+    int8_t testmotNO;
     int32_t cmNO = 0;
     int8_t lcdLine = 1;
     char r_lcdbuff[80] ={};
     ServerCAN dev_can(1);
-    virtualMotor testMOT(2,&dev_can);
+    testmotNO = 3;
+    virtualMotor testMOT(testmotNO,&dev_can);
     Sensor s_start(PIN__Z___Pin);
     Sensor s_reset(PIN_SW___Pin);
     s_reset.set_normal_stat(false);
@@ -518,17 +539,11 @@ void for_test_only()
     testMOT.setEnableEncoder(true);
     testMOT.setDir(false);
     testMOT.setDirEncoder(false);
-    testMOT.setSpeedUS(245LL,1000LL);
-    testMOT.setDefaultus(245LL,1000LL);
-    testMOT.setOtherMotorSensorStop(2);
+    testMOT.setSensorBottomNormalStat(false);
+    testMOT.setSensorTOPNormalStat(false);
+    testMOT.setDefaultus(400,1000LL);
     testMOT.synchConfig();
 
-
-    testMOT.synchConfig();
-
-
-    testMOT.setSpeedUS(250LL,1000LL);
-    testMOT.setDefaultus(250LL,1000LL);
     while (1)
     {
         s_reset.run();
@@ -537,6 +552,8 @@ void for_test_only()
         testMOT.run();
         if(dev_can.read_motLocation(&iLocation,&BotSensor,&TopSensor,&MotorMoving,&imotNO))
         {
+            if(testmotNO != imotNO)
+                continue;
             testMOT.readCAN(iLocation,BotSensor,TopSensor,MotorMoving,imotNO);
             sprintf(r_lcdbuff,"1:%d        ",testMOT.getLocation());
             r_lcdbuff[19] = 0;

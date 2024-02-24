@@ -74,17 +74,14 @@ def shutMotor():
 
 def openPort():
     global portOpenCheck 
-    if(clicked.get().startswith("COM") == False):
-        print("Not ON Windows")
-        return
     portOpenCheck = 1
     Step.openSerialPort(clicked.get())
     Step.firstmotorRun()
     global mot1,mot2,mot3,mot4
-    mot3.maxspeed = 950
-    mot1.maxspeed = 950
-    mot2.maxspeed = 50
-    mot4.lowspeed = 6000
+    mot3.maxspeed = 400
+    mot1.maxspeed = 400
+    mot2.maxspeed = 30
+    mot4.maxspeed = 50
     #mot3.can_Go_Negetive()
     global allmotor
     for i in allmotor:
@@ -95,10 +92,6 @@ def openPort():
 def startaction(event):
     global allmotor
     global portOpenCheck 
-    global readstatValue
-    i = 0
-    while(readstatValue == 2):
-        i = i + 1
     for i in allmotor:
         i.send_Position_To_Step()
     if portOpenCheck == 0:
@@ -108,21 +101,12 @@ def startaction(event):
 
 def actionHome(event):
     HomeMotor()
-readstatValue = 0
 auto_grinde = 0
 
 def getPosition():
-    global readstatValue,auto_grinde
-    if (readstatValue == 0):
-        return
+    global auto_grinde
     root.after(700,getPosition)              
-    readstatValue = 2
-    for i in range(1,5):
-        Step.sendCommand(motor=i,dest=Step.Ecom["C_Interface_Server"],\
-        reg=Step.Ecom["C_command_Encoder_get_position"],val = Step.Ecom["C_Interface_ENCODER"])
-    readstatValue = 1
-    if(auto_grinde == 1):
-        check_auto_grind_Command()
+    check_auto_grind_Command()
 
 filecsv = open("mycsv.csv","r")
 
@@ -179,39 +163,37 @@ def change_auto_stat():
         auto_grinde = 1
         button_auto.config(bg="#81e381")
 
-def readmotorStatus():
-    global readStat
-    global readstatValue
-    if readstatValue:
-        readstatValue = 0
-        readStat.config(bg="#263D42")
-    else:
-        readstatValue = 1
-        readStat.config(bg="#81e381")
-        getPosition()
 
 
 def printvarcurrposi(i_val):
     i_val = i_val.split(" ")
+    motstat = 0
+    motNum = 0
+    valMot = 0
     try:
-        if(int(i_val[2]) != 19):
-            return
+        motstat = int(re.sub("[^0-9]","",i_val[2]))
+        motNum = int(re.sub("[^0-9]","",i_val[0]))
+        valMot = int(re.sub("[^0-9-]","",i_val[1])) * 10
     except:
         return
-    if(int(i_val[1]) == 1):
-        mot1.setmotorPos(convertPosLinear(int(i_val[3])))
-        mot1.set_read_position(int(i_val[3]))
-    if(int(i_val[1]) == 2):
-        mot2.setmotorPos(convertPosLinear(int(i_val[3])))
-        mot2.set_read_position(int(i_val[3]))
-    if(int(i_val[1]) == 3):
-        mot3.setmotorPos(convertPosLinear(int(i_val[3])))
-        mot3.set_read_position(int(i_val[3]))
-    if(int(i_val[1]) == 4):
-        mot4.setmotorPos(convertPosLinear(int(i_val[3])))
-        mot4.set_read_position(int(i_val[3]))
+    if(motNum == 1):
+        mot1.set_motorStat(motstat)
+        mot1.setmotorPos(convertPosLinear(valMot))
+        mot1.set_read_position(valMot)
+    if(motNum == 2):
+        mot2.set_motorStat(motstat)
+        mot2.setmotorPos(convertPosLinear(valMot))
+        mot2.set_read_position(valMot)
+    if(motNum == 3):
+        mot3.set_motorStat(motstat)
+        mot3.setmotorPos(convertPosLinear(valMot))
+        mot3.set_read_position(valMot)
+    if(motNum == 4):
+        mot4.set_motorStat(motstat)
+        mot4.setmotorPos(convertPosLinear(valMot))
+        mot4.set_read_position(valMot)
 
-def print_current_Pos( i_dat):
+def print_current_Pos(i_dat):
     if(i_dat == ""):
         return
     s_a = i_dat.split("\n")
@@ -222,7 +204,7 @@ def refresh_Txt_section():
     global root
     a = Step.readcomm()
     print_current_Pos(a)
-    root.after(700,refresh_Txt_section)     
+    root.after(200,refresh_Txt_section)     
 
 def closeport():
     Step.stopCommunication()
@@ -254,8 +236,6 @@ closePort.place(relx=0.4,rely= 0.2)
 HomeAll = tk.Button(frame, text="Home All", padx=10, pady=5, fg="white", bg="#263D42",command=HomeMotor)
 HomeAll.place(relx=0.5,rely= 0.2)
 
-readStat = tk.Button(frame, text="read Stat", padx=10, pady=5, fg="white", bg="#263D42",command=readmotorStatus)
-readStat.place(relx=0.6,rely= 0.2)
 
 zeroAll = tk.Button(frame, text="Zero All", padx=10, pady=5, fg="white", bg="#263D42",command=zeroAllmotor)
 zeroAll.place(relx=0.7,rely= 0.2)

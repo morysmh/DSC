@@ -12,6 +12,7 @@ class guiclass():
         self.root = tkroot
         self.posx = posx
         self.posy = posy
+        self.isMoving = 0
         self.maxspeed = maxspeed
         self.lowspeed = lowspeed
         self.motorNo = motorNo 
@@ -96,13 +97,17 @@ class guiclass():
 
     def set_read_position(self,readPos):
         self.read_pos = readPos
+	
+    def set_motorStat(self,status):
+        self.isMoving = status & 0b10
+        if(self.isMoving):
+            self.isreachbutton.config(bg="#00FF00")
+        else:
+            self.isreachbutton.config(bg="#FF0000")
     
     def is_reachSetPos(self):
-        if math.isclose(self.read_pos , self.position):
-            self.isreachbutton.config(bg="#00FF00")
-            return 1
-        self.isreachbutton.config(bg="#FF0000")
-        return 0
+        return not self.isMoving
+	
     def set_Position_Absoulute(self,pos):
         if (self.negIsPossible == 0) and (pos < 0):
             pos = 0
@@ -180,6 +185,7 @@ class guiclass():
         if self.comActive == 0:
             return
         Step.moveMotor(self.motorNo,self.position)
+        Step.startMoving(self.motorNo)
 
     def enable_motor(self):
         if self.comActive == 0:

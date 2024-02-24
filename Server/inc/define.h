@@ -89,7 +89,11 @@ typedef enum{
     PC_SetSpeed = 2,
     PC_MoveMotor = 3,
     PC_MoveAll = 4,
-    PC_SetDefaulSpeed = 5
+    PC_SetDefaulSpeed = 5,
+    PC_DisableMotor = 6,
+    PC_EnableMotor = 7,
+    PC_GoHome = 8,
+    PC_PersiceHome = 9
 
 
 }ENUM_Command_List;

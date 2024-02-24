@@ -10,6 +10,7 @@ virtualMotor::virtualMotor(uint8_t add,ServerCAN *ptrcan)
         pAddressMotor = 0;
     if(pAddressMotor >= 8)
         pAddressMotor = 100;
+    pSensorStatTOP = false;
     setDiv(16);
     setDir(false);
     setEnableMotor(true);
