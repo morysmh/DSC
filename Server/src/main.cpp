@@ -81,6 +81,9 @@ void set_speed(int32_t *ptr,virtualMotor **ptrmot);
 void move_releative(int32_t *ptr,virtualMotor **ptrmot);
 void move_absolute(int32_t *ptr,virtualMotor **ptrmot);
 
+void SangeMile(virtualMotor **allmot);
+void LoleSange(virtualMotor **allmot);
+
 int main()
 {
     int64_t t_mili_reset_interval = 0;
@@ -128,39 +131,10 @@ int main()
     s_start.set_normal_stat(false);
     s_start.enable();
     s_reset.enable();
-
-    mot1.setEnableEncoder(true);
-    mot1.setSensorBottomNormalStat(false);
-    mot1.setSensorTOPNormalStat(false);
-    mot1.setDir(false);
-    mot1.setDirEncoder(false);
-    mot1.setDefaultus(400LL,1500LL);
-    mot1.synchConfig();
-
-    mot2.setEnableEncoder(true);
-    mot2.setDir(false);
-    mot2.setDirEncoder(false);
-    mot2.setSensorBottomNormalStat(false);
-    mot2.setSensorTOPNormalStat(false);
-    mot2.setDefaultus(65,1500);
-    mot2.synchConfig();
-
-    mot3.setEnableEncoder(true);
-    mot3.setSensorBottomNormalStat(false);
-    mot3.setSensorTOPNormalStat(false);
-    mot3.setDir(false);
-    mot3.setDirEncoder(false);
-    mot3.setDefaultus(400,1500LL);
-    mot3.synchConfig();
-
-    mot4.setEnableEncoder(true);
-    mot4.setSensorBottomNormalStat(false);
-    mot4.setSensorTOPNormalStat(false);
-    mot4.setDir(false);
-    mot4.setDirEncoder(false);
-    mot4.setDefaultus(65,1500);
-    mot4.synchConfig();
-
+    
+    
+    //SangeMile(ptrAllMot);
+    LoleSange(ptrAllMot);
 
     t_first = time_us_64() + 400000LL;
     while(t_first > time_us_64());
@@ -792,6 +766,49 @@ bool move_motor(uint8_t start,virtualMotor **ptrmot)
 
 return false;
 }
+void LoleSange(virtualMotor **allmot)
+{
+    for(uint i=0;i<4;i++)
+    {
+        allmot[i]->setEnableEncoder(true);
+        allmot[i]->setSensorBottomNormalStat(false);
+        allmot[i]->setSensorTOPNormalStat(false);
+        allmot[i]->setDir(false);
+        allmot[i]->setDirEncoder(false);
+        allmot[i]->synchConfig();
+    }
+    allmot[0]->setDefaultus(400LL,1500LL);
+    allmot[1]->setDefaultus(65,1500);
+    allmot[2]->setDefaultus(400,1500LL);
+    allmot[3]->setDefaultus(65,1500);
+}
+void SangeMile(virtualMotor **allmot)
+{
+    for(uint i=0;i<4;i++)
+    {
+        allmot[i]->setEnableEncoder(true);
+        allmot[i]->setSensorBottomNormalStat(false);
+        allmot[i]->setSensorTOPNormalStat(false);
+        allmot[i]->setDir(false);
+        allmot[i]->setDirEncoder(false);
+    }
+    
+    allmot[0]->setSensorBottomNormalStat(true);
+
+    allmot[1]->setOtherMotorSensorStop(2);
+
+    allmot[2]->setOtherMotorSensorStop(2);
+
+    allmot[3]->setEnableEncoder(false);
+    allmot[3]->setEncoder_nm(500LL);
+
+    allmot[0]->setDefaultus(200LL,1500LL);
+    allmot[1]->setDefaultus(25,1500);
+    allmot[2]->setDefaultus(25,1500);
+    allmot[3]->setDefaultus(25,1500);
+    for(uint i=0;i<4;i++)
+        allmot[i]->synchConfig();
+}
 int32_t position_speed[][5] =
 {
     {Absolute,NoChange,NoChange,NoChange,NoChange}, // DO NOT DELETE THIS LINE
@@ -850,15 +867,16 @@ int32_t position_speed[][5] =
     // {Reletive,-360000,NoChange,NoChange,NoChange},// tabdil m1
     // {Reletive,NoChange,NoChange,149500,NoChange},// tangent p2-2
 
-    {Speed,NoChange,NoChange,10000,NoChange},
-    {Speed,NoChange,NoChange,10000,NoChange},
+    // {Speed,NoChange,NoChange,10000,NoChange},
+    // {Speed,NoChange,NoChange,10000,NoChange},
 
-    {Reletive,NoChange,NoChange,30000,NoChange},// grind p2-2
+    // {Reletive,NoChange,NoChange,30000,NoChange},// grind p2-2
     
-    {Speed,DefSpeed,DefSpeed,DefSpeed,DefSpeed},
+    // {Speed,DefSpeed,DefSpeed,DefSpeed,DefSpeed},
 
-    {Absolute,NoChange,45000,45000,NoChange},// above sensor
-    {Absolute,30000,NoChange,NoChange,30000},// above sensor
+    // {Absolute,NoChange,45000,45000,NoChange},// above sensor
+    // {Absolute,30000,NoChange,NoChange,30000},// above sensor
+
     //DO NOT DELETE BELLOW LINE
     {END_OF_Command,NoChange,NoChange,NoChange,NoChange},
     {END_OF_Command,NoChange,NoChange,NoChange,NoChange},
