@@ -11,9 +11,14 @@
 #define Absolute 1
 #define Reletive 2
 #define Speed 3
+#define First_Independent_absolute_Set 4
+#define Last_Independent_absolute_Set 5 
+#define STOP_IndependentMove 6
+#define Start_IndependentMove 7
+#define Motor_delay 8
+#define END_OF_Command 20
 #define DefSpeed 1
 #define NoChange 0
-#define END_OF_Command 4
 typedef enum{
     do_nothing = 0,
     home_motor_highspeed_except4,
@@ -80,6 +85,9 @@ bool move_motor(uint8_t start,virtualMotor **ptrmot);
 void set_speed(int32_t *ptr,virtualMotor **ptrmot);
 void move_releative(int32_t *ptr,virtualMotor **ptrmot);
 void move_absolute(int32_t *ptr,virtualMotor **ptrmot);
+void setIndependent_Move(int32_t *i_ptr,independentStruct *a_mot);
+bool move_independent_motor(independentStruct *i_indep,virtualMotor **ptrmot);
+
 
 void SangeMile(virtualMotor **allmot);
 void LoleSange(virtualMotor **allmot);
@@ -133,8 +141,8 @@ int main()
     s_reset.enable();
     
     
-    //SangeMile(ptrAllMot);
-    LoleSange(ptrAllMot);
+    SangeMile(ptrAllMot);
+    //LoleSange(ptrAllMot);
 
     t_first = time_us_64() + 400000LL;
     while(t_first > time_us_64());
@@ -736,6 +744,7 @@ bool move_motor(uint8_t start,virtualMotor **ptrmot)
 {
     static volatile uint16_t iLine = 0;
     static volatile uint64_t t_mili = 0;
+    static independentStruct a_IndepMot[10] = {};
     if(start == Stop_Moves)
     {
         iLine = 0;
@@ -746,6 +755,7 @@ bool move_motor(uint8_t start,virtualMotor **ptrmot)
     }
     if(iLine == 0)
         return false;
+    move_independent_motor(a_IndepMot,ptrmot);
     if(t_mili > time_us_64())
         return true;
     t_mili = time_us_64() + 200000ULL;
@@ -753,6 +763,13 @@ bool move_motor(uint8_t start,virtualMotor **ptrmot)
     {
         if(ptrmot[i]->isBusy())
             return true;
+    }
+
+    if(position_speed[iLine][0] == Motor_delay)
+    {
+        t_mili = time_us_64() + ((uint64_t)position_speed[iLine][1]);
+        iLine++;
+        return true;
     }
     if(position_speed[iLine][0] == END_OF_Command)
     {
@@ -762,9 +779,10 @@ bool move_motor(uint8_t start,virtualMotor **ptrmot)
     move_absolute(&position_speed[iLine][0],ptrmot);
     move_releative(&position_speed[iLine][0],ptrmot);
     set_speed(&position_speed[iLine][0],ptrmot);
+    setIndependent_Move(&position_speed[iLine][0],a_IndepMot);
     iLine++;
 
-return false;
+    return true;
 }
 void LoleSange(virtualMotor **allmot)
 {
@@ -796,6 +814,8 @@ void SangeMile(virtualMotor **allmot)
     allmot[0]->setSensorBottomNormalStat(true);
 
     allmot[1]->setOtherMotorSensorStop(2);
+    allmot[1]->setSensorBottomNormalStat(true);
+    allmot[1]->setSensorTOPNormalStat(true);
 
     allmot[2]->setOtherMotorSensorStop(2);
 
@@ -809,11 +829,72 @@ void SangeMile(virtualMotor **allmot)
     for(uint i=0;i<4;i++)
         allmot[i]->synchConfig();
 }
+bool move_independent_motor(independentStruct *i_indep,virtualMotor **ptrmot)
+{
+    volatile static uint64_t t_mili = 0;
+    if(t_mili > time_us_64())
+        return false;
+    t_mili = time_us_64() + 120000ULL;
+    for(uint i=0;i<4;i++)
+    {
+        if(ptrmot[i]->isBusy())
+            continue;
+        if(i_indep[i].enable == false)
+            continue;
+        ptrmot[i]->setToGo(i_indep[i].nextMove);
+        ptrmot[i]->Move();
+        if(i_indep[i].nextMove == i_indep[i].start)
+            i_indep[i].nextMove = i_indep[i].stop;   
+        else
+            i_indep[i].nextMove = i_indep[i].start;   
+    }
+    return true;
+}
+
+void setIndependent_Move(int32_t *i_ptr,independentStruct *a_mot)
+{
+    if(i_ptr[0] == First_Independent_absolute_Set)
+    {
+        for(uint i=0;i<4;i++)
+        {
+            if(i_ptr[i+1] != NoChange)
+            {
+                a_mot[i].start = i_ptr[i+1];
+                a_mot[i].nextMove = i_ptr[i+1];
+            }
+        }
+    }
+    else if(i_ptr[0] == Last_Independent_absolute_Set)
+    {
+        for(uint i=0;i<4;i++)
+        {
+            if(i_ptr[i+1] != NoChange)
+                a_mot[i].stop = i_ptr[i+1];
+        }
+    }
+    else if(i_ptr[0] == Start_IndependentMove)
+    {
+        for(uint i=0;i<4;i++)
+        {
+            if(i_ptr[i+1] != NoChange)
+                a_mot[i].enable = true;
+        }
+    }
+    else if(i_ptr[0] == STOP_IndependentMove)
+    {
+        for(uint i=0;i<4;i++)
+        {
+            if(i_ptr[i+1] != NoChange)
+                a_mot[i].enable = false;
+        }
+    }
+}
 int32_t position_speed[][5] =
 {
     {Absolute,NoChange,NoChange,NoChange,NoChange}, // DO NOT DELETE THIS LINE
     //**************Change the Code Bellow***************
     {Speed,DefSpeed,DefSpeed,DefSpeed,DefSpeed},
+    {Absolute,1050000,1200000,0,11250000},
     // {Absolute,1050000,1200000,12000,18250000},// above sensor
     // {Reletive,NoChange,NoChange,700000,NoChange},// first touch motor 3
     // {Reletive,NoChange,NoChange,-20000,NoChange},
@@ -843,6 +924,7 @@ int32_t position_speed[][5] =
     // {Speed,DefSpeed,DefSpeed,DefSpeed,DefSpeed},
     
     // {Reletive,NoChange,3500000,NoChange,NoChange},
+    // {Reletive,NoChange,239000,NoChange,NoChange},
     // {Reletive,NoChange,NoChange,672500,NoChange},// p1 tangent
 
     // {Speed,NoChange,NoChange,10000,NoChange},
@@ -853,9 +935,9 @@ int32_t position_speed[][5] =
     // {Reletive,140000,NoChange,NoChange,NoChange},// p2 m1 adjust
 
     // {Speed,DefSpeed,DefSpeed,DefSpeed,DefSpeed},
-
+    // {Reletive,NoChange,NoChange,10000,NoChange},
     // {Reletive,NoChange,NoChange,762000,NoChange},// p2 tangent
-
+   
     // {Speed,NoChange,NoChange,10000,NoChange},
     // {Speed,NoChange,NoChange,10000,NoChange},
 
@@ -864,20 +946,29 @@ int32_t position_speed[][5] =
     // {Speed,DefSpeed,DefSpeed,DefSpeed,DefSpeed},
 
     // {Reletive,NoChange,NoChange,-208500,NoChange},// tabdil m3 
-    // {Reletive,-360000,NoChange,NoChange,NoChange},// tabdil m1
-    // {Reletive,NoChange,NoChange,149500,NoChange},// tangent p2-2
+    // {Reletive,-350000,NoChange,NoChange,NoChange},// tabdil m1
+    // {Reletive,NoChange,NoChange,137500,NoChange},// tangent p2-2
 
     // {Speed,NoChange,NoChange,10000,NoChange},
     // {Speed,NoChange,NoChange,10000,NoChange},
 
-    // {Reletive,NoChange,NoChange,30000,NoChange},// grind p2-2
+    // {Reletive,NoChange,NoChange,50000,NoChange},// grind p2-2
     
     // {Speed,DefSpeed,DefSpeed,DefSpeed,DefSpeed},
+    {Speed,DefSpeed,DefSpeed,DefSpeed,DefSpeed},
+    {First_Independent_absolute_Set,NoChange,NoChange,NoChange,8250000},
+    {Last_Independent_absolute_Set,NoChange,NoChange,NoChange,6250000},
+    {Start_IndependentMove,NoChange,NoChange,NoChange,true},
+    {Motor_delay,13000000,NoChange,NoChange,NoChange},
+    {STOP_IndependentMove,true,true,true,true},
 
     // {Absolute,NoChange,45000,45000,NoChange},// above sensor
     // {Absolute,30000,NoChange,NoChange,30000},// above sensor
-
     //DO NOT DELETE BELLOW LINE
     {END_OF_Command,NoChange,NoChange,NoChange,NoChange},
     {END_OF_Command,NoChange,NoChange,NoChange,NoChange},
 };
+//#define First_Independent_absolute_Set 4
+//#define Last_Independent_absolute_Set 5 
+//#define STOP_IndependentMove 6
+//#define Start_IndependentMove 7

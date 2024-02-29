@@ -157,4 +157,13 @@ typedef enum{
     C_DSC_BIT_STOP_REPORTING = 2,
 
 }Enum_DSC;
+
+typedef struct
+{
+    int32_t start;
+    int32_t stop;
+    bool enable;
+    int32_t nextMove;
+}independentStruct;
+
 #endif
