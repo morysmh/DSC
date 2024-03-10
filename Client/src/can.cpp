@@ -1,8 +1,24 @@
 #include "can.h"
+void CanCotroll::handl_ACK()
+{
+    p_canSend.id = C_DSC_Server_ADDRESS_CAN + p_address;
+    p_canSend.header.length = p_canRX.header.length;
+    p_canSend.header.rtr = 0;
+    for(uint8_t i=0;i<p_canRX.header.length;i++)
+    {
+        p_canSend.data[i] = p_canRX.data[i];
+    }
+}
 void CanCotroll::handle_message()
 {
     if(p_address == 0)
         return;
+    if(p_canRX.data[C_DSC_ARRAY_OPCODE] >= C_DSC_OPCODE_ADD_VALUE_ACK)
+    {
+        CanBusyACK = true;
+        handl_ACK();
+        p_canRX.data[C_DSC_ARRAY_OPCODE] -= C_DSC_OPCODE_ADD_VALUE_ACK;
+    }
     p_rx[p_rx_head].iPara = p_canRX.data[C_DSC_ARRAY_OPCODE];
     uint8_t *ptrRX,*ptrCAN;
     ptrRX = p_rx[p_rx_head].idata;
@@ -40,6 +56,8 @@ bool CanCotroll::read_other_motor_stat(uint8_t *istat)
 void CanCotroll::send_status(int32_t iLocation,bool isMoving, bool iSensorBottom,bool iSensorTOP,bool iSendNOW)
 {
     uint8_t *ptrSend;
+    if(CanBusyACK == true)
+        return;
     if(iSendNOW == true)
         pt_interval = time_us_64();
     if(pt_interval > time_us_64())
@@ -47,7 +65,7 @@ void CanCotroll::send_status(int32_t iLocation,bool isMoving, bool iSensorBottom
     pt_interval = time_us_64() + c_interval_status;
     if(isMoving == false)
         pt_interval = time_us_64() + (c_interval_status * 5);
-    pSendAvailable = true;
+    CanBusyACK = true;
     p_canSend.header.rtr = 0;
     p_canSend.header.length = 6;
     int32_to_ptrint8(iLocation,(uint8_t *)&p_canSend.data[C_DSC_ARRAY_STATUS_LOCATION_index + 1]);
@@ -100,14 +118,16 @@ void CanCotroll::run()
         if(p_canRX.id == p_other_sensor_address)
             handle_other_sensor();
     }
-    if(pSendAvailable == false)
+    if(CanBusyACK == false)
         return;
     if(mcp2515_check_free_buffer() == false)
         return;
     if(p_canSend.id == p_other_sensor_address)
         handle_Self_OtherSensor_Status(p_canSend.data[C_DSC_ARRAY_STATUS_REPORT_1byte + 1]);
     if(mcp2515_send_message(&p_canSend))
-        pSendAvailable = false;
+    {
+        CanBusyACK = false;
+    }
 }
 CanCotroll::CanCotroll(uint8_t i_add)
 {

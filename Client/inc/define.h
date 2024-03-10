@@ -130,6 +130,7 @@ typedef enum{
     C_DSC_Null = 0,
 
     C_DSC_ARRAY_OPCODE = 0,
+    C_DSC_OPCODE_ADD_VALUE_ACK = 128,
     C_DSC_OPCODE_REG_CONFIG = 1,
     C_DSC_OPCODE_REG_SPEED = 2,
     C_DSC_OPCODE_REG_TOGO = 3,

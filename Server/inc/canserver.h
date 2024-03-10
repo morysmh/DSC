@@ -26,6 +26,7 @@ private:
     }storage;
     void copy_uint8(uint8_t *dest,uint8_t *source,uint8_t count);
     void handle_message();
+    void handle_ack();
     int8_t ringbuff_adder(int8_t RbIndex, int8_t iVal);
     int8_t p_send_head = 0,p_send_tail = 0;
     int8_t p_rx_head = 0,p_rx_tail = 0;
@@ -34,6 +35,8 @@ private:
     storage p_rx[50] = {};
     tCAN p_can = {};
     int64_t p_mili = 0;
+    uint8_t pRetry = 0;
+    const uint8_t c_MAX_Retry = 128;
     const int64_t c_interval = 14510LL;
 };
 

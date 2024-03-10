@@ -25,6 +25,7 @@ private:
     }storage;
     void handle_message();
     void handle_other_sensor();
+    void handl_ACK();
     uint8_t ringbuff_adder(uint8_t RbIndex, int8_t iVal);
     uint8_t p_address = 0;
     uint16_t p_other_sensor_address = 0;
@@ -38,4 +39,5 @@ private:
 
     bool pOtherSensorStatChange = false;
     uint8_t pOtherMotorStat = 0;
+    bool CanBusyACK = false;
 };

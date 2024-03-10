@@ -27,10 +27,30 @@ void ServerCAN::send_data(uint8_t oMotNO,uint8_t iOpcode,uint8_t *data)
     copy_uint8(p_data[p_send_head].idata,data,7);
     p_send_head = ringbuff_adder(p_send_head,1);
 }
+void ServerCAN::handle_ack()
+{
+    if(p_data[p_send_tail].imotNO != (p_can.id - C_Server_ADDRESS_CAN))
+        return;
+    if(p_data[p_send_tail].iOpCode != (p_can.data[C_DSC_ARRAY_OPCODE] - C_DSC_OPCODE_ADD_VALUE_ACK))
+        return;
+    for(uint i=0;i<7;i++)
+    {
+        if(p_data[p_send_tail].idata[i] != p_can.data[i + 1])
+            return;
+    }
+    pRetry = 0;
+    p_mili = time_us_64() + 1001LL;
+    p_send_tail = ringbuff_adder(p_send_tail,1);
+}
 void ServerCAN::handle_message()
 {
     if(p_can.id < C_Server_ADDRESS_CAN)
         return;
+    if(p_can.data[C_DSC_ARRAY_OPCODE] >= C_DSC_OPCODE_ADD_VALUE_ACK)
+    {
+        handle_ack();
+        return;
+    }
     p_rx[p_rx_head].iOpCode = p_can.data[C_DSC_ARRAY_OPCODE];
     p_rx[p_rx_head].imotNO = p_can.id - C_Server_ADDRESS_CAN;
     copy_uint8(p_rx[p_rx_head].idata,&p_can.data[C_DSC_ARRAY_OPCODE + 1],7);
@@ -50,14 +70,21 @@ void ServerCAN::run()
         return;
     if(mcp2515_check_free_buffer() == false)
         return;
+    if(pRetry > c_MAX_Retry)
+    {
+        p_send_tail = ringbuff_adder(p_send_tail,1);
+        pRetry = 0;
+    }
+    p_mili = time_us_64() + (c_interval * 5);
     p_can.header.length = 8;
     p_can.header.rtr = 0;
     p_can.id = ((p_data[p_send_tail].imotNO) & 0xFFULL);
-    p_can.data[C_DSC_ARRAY_OPCODE] = p_data[p_send_tail].iOpCode;
+    p_can.data[C_DSC_ARRAY_OPCODE] = p_data[p_send_tail].iOpCode + C_DSC_OPCODE_ADD_VALUE_ACK;
     copy_uint8(&p_can.data[1],p_data[p_send_tail].idata,7);
     if(mcp2515_send_message(&p_can) == false)
         return;
-    p_send_tail = ringbuff_adder(p_send_tail,1);
+    pRetry++;
+    //p_send_tail = ringbuff_adder(p_send_tail,1);
 }
 int8_t ServerCAN::ringbuff_adder(int8_t RbIndex, int8_t iVal)
 {

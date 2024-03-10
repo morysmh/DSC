@@ -15,6 +15,7 @@ add_executable(${PROJECT_NAME}
 	src/canserver.cpp
 	src/i2c-display-lib.c
 	src/clientmotor.cpp
+	src/DataMotor.c
 	)
 
 pico_add_extra_outputs(${PROJECT_NAME})

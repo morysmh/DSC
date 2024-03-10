@@ -102,6 +102,7 @@ typedef enum{
     C_DSC_Server_ADDRESS_CAN = 0xFF,
     C_DSC_BRODCAST_ADDRESS_CAN = 0xF0,
     C_DSC_Null = 0,
+    C_DSC_OPCODE_ADD_VALUE_ACK = 128,
     C_DSC_ARRAY_OPCODE = 0,
     C_DSC_OPCODE_REG_CONFIG = 1,
     C_DSC_OPCODE_REG_SPEED = 2,
@@ -165,5 +166,17 @@ typedef struct
     bool enable;
     int32_t nextMove;
 }independentStruct;
+
+#define Absolute 1
+#define Reletive 2
+#define Speed 3
+#define First_Independent_absolute_Set 4
+#define Last_Independent_absolute_Set 5 
+#define STOP_IndependentMove 6
+#define Start_IndependentMove 7
+#define Motor_delay 8
+#define END_OF_Command 20
+#define DefSpeed 1
+#define NoChange 0
 
 #endif
