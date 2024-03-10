@@ -138,6 +138,16 @@ void virtualMotor::Move()
     ptrCAN->send_data(pAddressMotor,C_DSC_OPCODE_REG_START_STOP,ptmpBuff);
 }
 
+void virtualMotor::TopSensorStat(bool stat)
+{
+    writeConfigRegMotor(C_DSC_BIT_CONFIG_SENSOR_ENABLE_TOP,stat);
+    synchConfig();
+}
+void virtualMotor::LockStat(bool Lock)
+{
+    writeConfigRegMotor(C_DSC_BIT_CONFIG_LOCK_MOTOR,Lock);
+    synchConfig();
+}
 void virtualMotor::setSensorBottomNormalStat(bool iVal)
 {
     writeConfigRegMotor(C_DSC_BIT_CONFIG_BOTTOM_SENSOR_DEFAULT,iVal);

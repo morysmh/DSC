@@ -75,6 +75,7 @@ void set_speed(int32_t *ptr,virtualMotor **ptrmot);
 void move_releative(int32_t *ptr,virtualMotor **ptrmot);
 void move_absolute(int32_t *ptr,virtualMotor **ptrmot);
 void setIndependent_Move(int32_t *i_ptr,independentStruct *a_mot);
+void StatusTOP_Motor(int32_t *i_ptr,virtualMotor **ptrMot);
 bool move_independent_motor(independentStruct *i_indep,virtualMotor **ptrmot);
 
 
@@ -770,6 +771,7 @@ bool move_motor(uint8_t start,virtualMotor **ptrmot)
     move_releative(&position_speed[iLine][0],ptrmot);
     set_speed(&position_speed[iLine][0],ptrmot);
     setIndependent_Move(&position_speed[iLine][0],a_IndepMot);
+    StatusTOP_Motor(&position_speed[iLine][0],ptrmot);
     iLine++;
 
     return true;
@@ -876,6 +878,29 @@ void setIndependent_Move(int32_t *i_ptr,independentStruct *a_mot)
         {
             if(i_ptr[i+1] != NoChange)
                 a_mot[i].enable = false;
+        }
+    }
+}
+void StatusTOP_Motor(int32_t *i_ptr,virtualMotor **ptrMot)
+{
+    if(i_ptr[0] == TOP_SENSOR_STAT)
+    {
+        for(uint i=0;i<4;i++)
+        {
+            if(i_ptr[i+1] == Enable)
+                ptrMot[i]->TopSensorStat(true);
+            else
+                ptrMot[i]->TopSensorStat(false);
+        }
+    }
+    if(i_ptr[0] == LOCK_MOTOR)
+    {
+        for(uint i=0;i<4;i++)
+        {
+            if(i_ptr[i+1] == Enable)
+                ptrMot[i]->LockStat(true);
+            else
+                ptrMot[i]->LockStat(false);
         }
     }
 }

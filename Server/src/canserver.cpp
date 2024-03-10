@@ -79,12 +79,15 @@ void ServerCAN::run()
     p_can.header.length = 8;
     p_can.header.rtr = 0;
     p_can.id = ((p_data[p_send_tail].imotNO) & 0xFFULL);
-    p_can.data[C_DSC_ARRAY_OPCODE] = p_data[p_send_tail].iOpCode + C_DSC_OPCODE_ADD_VALUE_ACK;
+    p_can.data[C_DSC_ARRAY_OPCODE] = p_data[p_send_tail].iOpCode;
+    if(p_can.id != C_DSC_BRODCAST_ADDRESS_CAN)
+        p_can.data[C_DSC_ARRAY_OPCODE] += C_DSC_OPCODE_ADD_VALUE_ACK;
     copy_uint8(&p_can.data[1],p_data[p_send_tail].idata,7);
     if(mcp2515_send_message(&p_can) == false)
         return;
     pRetry++;
-    //p_send_tail = ringbuff_adder(p_send_tail,1);
+    if(p_can.data[C_DSC_ARRAY_OPCODE] < C_DSC_OPCODE_ADD_VALUE_ACK)
+        p_send_tail = ringbuff_adder(p_send_tail,1);
 }
 int8_t ServerCAN::ringbuff_adder(int8_t RbIndex, int8_t iVal)
 {

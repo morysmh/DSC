@@ -142,6 +142,7 @@ typedef enum{
     C_DSC_BIT_STATUS_SENSOR_BOTTOM_STATUS = 1,
     C_DSC_BIT_STATUS_SENSOR_TOP_STATUS = 2,
 
+    C_DSC_BIT_CONFIG_LOCK_MOTOR = 9,
     C_DSC_BIT_CONFIG_ENCODER_HARDWARE = 8,
     C_DSC_BIT_CONFIG_BOTTOM_SENSOR_DEFAULT = 7,
     C_DSC_BIT_CONFIG_TOP_SENSOR_DEFAULT = 6,
@@ -175,7 +176,11 @@ typedef struct
 #define STOP_IndependentMove 6
 #define Start_IndependentMove 7
 #define Motor_delay 8
+#define TOP_SENSOR_STAT 9
+#define LOCK_MOTOR  10
 #define END_OF_Command 20
+#define Enable 1
+#define Disable 0
 #define DefSpeed 1
 #define NoChange 0
 

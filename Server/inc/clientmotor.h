@@ -28,7 +28,9 @@ public:
     void readCAN(int32_t iLocation,bool iBottomSensorStat,bool iTopSensorStat,bool iMotorMoving,uint8_t iMorNO);
     void GoHome();
     void synchConfig();
+    void TopSensorStat(bool stat);
     void Move();
+    void LockStat(bool Lock);
 
     int32_t getLocation() const {return pCurrentPosition;}
 

@@ -32,6 +32,7 @@ public:
     int8_t get_pulse();
     void stop();
     void start_moving();
+    void lock_motor(bool val){p_LockMotor = val;}
     void set_EncoderRes(uint16_t inm){pResEncoder = inm/10;};
 
 private:
@@ -54,6 +55,7 @@ private:
     uint8_t p_pinSleep;
     bool p_is_config = false;
     bool p_motor_en = false;
+    bool p_LockMotor = false;
 
     bool p_pid_en = false;
     int32_t e0,e1,e2;

@@ -2,6 +2,8 @@
 int32_t position_speed[][5] =
 {
     {Absolute,NoChange,NoChange,NoChange,NoChange}, // DO NOT DELETE THIS LINE
+    {LOCK_MOTOR,Disable,Disable,Disable,Disable}, //DO NOT DELETE THIS LINE
+    {TOP_SENSOR_STAT,Enable,Enable,Enable,Enable}, //DO NOT DELETE THIS LINE
     //**************Change the Code Bellow***************
     {Speed,DefSpeed,DefSpeed,DefSpeed,DefSpeed},
     {Absolute,1050000,1200000,0,11250000},
@@ -75,6 +77,8 @@ int32_t position_speed[][5] =
     // {Absolute,NoChange,45000,45000,NoChange},// above sensor
     // {Absolute,30000,NoChange,NoChange,30000},// above sensor
     //DO NOT DELETE BELLOW LINE
-    {END_OF_Command,NoChange,NoChange,NoChange,NoChange},
-    {END_OF_Command,NoChange,NoChange,NoChange,NoChange},
+    {LOCK_MOTOR,Disable,Disable,Disable,Disable}, //DO NOT DELETE THIS LINE
+    {TOP_SENSOR_STAT,Enable,Enable,Enable,Enable}, //DO NOT DELETE THIS LINE
+    {END_OF_Command,NoChange,NoChange,NoChange,NoChange},//DO NOT DELETE THIS LINE
+    {END_OF_Command,NoChange,NoChange,NoChange,NoChange},//DO NOT DELETE THIS LINE
 };

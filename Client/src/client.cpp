@@ -172,6 +172,8 @@ void Client::Star_Stop_register_handle(uint8_t *data)
 {
     uint8_t StartStop = 0;
     StartStop = data[C_DSC_ARRAY_StartStop];
+
+
     if(_bv(StartStop,C_DSC_BIT_START_MOVING))
         o_stepmotor->start_moving();
     if(_bv(StartStop,C_DSC_BIT_STOP_MOVING))
@@ -224,6 +226,7 @@ void Client::config_register_handle(uint8_t *data)
         o_stepmotor->pid_enable();
     else
         o_stepmotor->pid_disable();
+    o_stepmotor->lock_motor(_bv(rConf,C_DSC_BIT_CONFIG_LOCK_MOTOR));
 }
 
 bool Client::_bv(uint32_t iVal,uint8_t iBV)

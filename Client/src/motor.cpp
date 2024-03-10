@@ -179,6 +179,8 @@ void StepMotor::calc_Pid()
 }
 void StepMotor::set_togo_Location(int32_t i_togo)
 {
+    if(p_LockMotor == true)
+        return;
     i_togo /= pResEncoder;
     i_togo *= pResEncoder;
     p_togo_Location = i_togo;
