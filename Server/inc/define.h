@@ -178,6 +178,7 @@ typedef struct
 #define Motor_delay 8
 #define TOP_SENSOR_STAT 9
 #define LOCK_MOTOR  10
+#define StallExecution 11
 #define END_OF_Command 20
 #define Enable 1
 #define Disable 0

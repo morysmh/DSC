@@ -70,6 +70,7 @@ void for_test_only();
 void lcd_refresh_data(virtualMotor **ptrmot);
 bool persision_home(uint8_t start,virtualMotor **ptrmot);
 
+bool oneStepMove(Sensor *sUp,Sensor *sDown,virtualMotor **ptrmot);
 bool move_motor(uint8_t start,virtualMotor **ptrmot);
 void set_speed(int32_t *ptr,virtualMotor **ptrmot);
 void move_releative(int32_t *ptr,virtualMotor **ptrmot);
@@ -131,8 +132,8 @@ int main()
     s_reset.enable();
     
     
-    SangeMile(ptrAllMot);
-    //LoleSange(ptrAllMot);
+    //SangeMile(ptrAllMot);
+    LoleSange(ptrAllMot);
 
     t_first = time_us_64() + 400000LL;
     while(t_first > time_us_64());
@@ -731,11 +732,33 @@ void set_speed(int32_t *ptr,virtualMotor **ptrmot)
         ptrmot[i]->setSpeedUS(ptr[i+1],ptr[i+1] + 1500);
     }
 }
+bool oneStepMove(Sensor *sUp,Sensor *sDown,virtualMotor **ptrmot)
+{
+    int32_t moveForward[] = {Reletive,NoChange,NoChange,NoChange,5000};
+    int32_t moveBackward[] = {Reletive,NoChange,NoChange,NoChange,5000};
+    if((sUp->is_triged()) && (sUp->get_sensor_stat() == 1))
+    {
+        move_releative(moveForward,ptrmot);
+    }
+    if((sDown->is_triged()) && (sDown->get_sensor_stat() == 1))
+    {
+        move_releative(moveBackward,ptrmot);
+    }
+return true;
+}
 bool move_motor(uint8_t start,virtualMotor **ptrmot)
 {
     static volatile uint16_t iLine = 0;
     static volatile uint64_t t_mili = 0;
     static independentStruct a_IndepMot[10] = {};
+    static Sensor sUp(PIN__A___Pin);
+    static Sensor sDown(PIN__B___Pin);
+    sUp.set_normal_stat(false);
+    sDown.set_normal_stat(false);
+    sUp.enable();
+    sDown.enable();
+    sUp.run();
+    sDown.run();
     if(start == Stop_Moves)
     {
         iLine = 0;
@@ -743,6 +766,10 @@ bool move_motor(uint8_t start,virtualMotor **ptrmot)
     if((start == Start_Moves) && (iLine == 0))
     {
         iLine = 1;
+    }
+    if((start == Start_Moves) && (position_speed[iLine][0] == StallExecution))
+    {
+        iLine++;
     }
     if(iLine == 0)
         return false;
@@ -754,6 +781,11 @@ bool move_motor(uint8_t start,virtualMotor **ptrmot)
     {
         if(ptrmot[i]->isBusy())
             return true;
+    }
+    if(position_speed[iLine][0] == StallExecution)
+    {
+        oneStepMove(&sUp,&sDown,ptrmot);
+        return true;
     }
 
     if(position_speed[iLine][0] == Motor_delay)
@@ -788,7 +820,7 @@ void LoleSange(virtualMotor **allmot)
         allmot[i]->synchConfig();
     }
     allmot[0]->setDefaultus(400LL,1500LL);
-    allmot[1]->setDefaultus(65,1500);
+    allmot[1]->setDefaultus(25,1500);
     allmot[2]->setDefaultus(400,1500LL);
     allmot[3]->setDefaultus(65,1500);
 }
