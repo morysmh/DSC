@@ -735,7 +735,7 @@ void set_speed(int32_t *ptr,virtualMotor **ptrmot)
 bool oneStepMove(Sensor *sUp,Sensor *sDown,virtualMotor **ptrmot)
 {
     int32_t moveForward[] = {Reletive,NoChange,NoChange,NoChange,5000};
-    int32_t moveBackward[] = {Reletive,NoChange,NoChange,NoChange,5000};
+    int32_t moveBackward[] = {Reletive,NoChange,NoChange,NoChange,-5000};
     if((sUp->is_triged()) && (sUp->get_sensor_stat() == 1))
     {
         move_releative(moveForward,ptrmot);
@@ -751,8 +751,8 @@ bool move_motor(uint8_t start,virtualMotor **ptrmot)
     static volatile uint16_t iLine = 0;
     static volatile uint64_t t_mili = 0;
     static independentStruct a_IndepMot[10] = {};
-    static Sensor sUp(PIN__A___Pin);
-    static Sensor sDown(PIN__B___Pin);
+    static Sensor sDown(PIN__A___Pin);
+    static Sensor sUp(PIN__B___Pin);
     sUp.set_normal_stat(false);
     sDown.set_normal_stat(false);
     sUp.enable();
@@ -819,9 +819,9 @@ void LoleSange(virtualMotor **allmot)
         allmot[i]->setDirEncoder(false);
         allmot[i]->synchConfig();
     }
-    allmot[0]->setDefaultus(400LL,1500LL);
+    allmot[0]->setDefaultus(600LL,2500LL);
     allmot[1]->setDefaultus(25,1500);
-    allmot[2]->setDefaultus(400,1500LL);
+    allmot[2]->setDefaultus(400,2500LL);
     allmot[3]->setDefaultus(65,1500);
 }
 void SangeMile(virtualMotor **allmot)
