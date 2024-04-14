@@ -32,7 +32,7 @@ private:
     uint8_t p_rx_head = 0,p_rx_tail = 0;
     const uint8_t c_buff_size = 35;
     storage p_rx[40] = {};
-    tCAN p_canRX = {},p_canSend = {};
+    tCAN p_canRX = {},p_canSend = {},p_status = {};
     bool pSendAvailable = false;
     uint64_t c_interval_status = 15000ULL;
     uint64_t pt_interval = 0;
@@ -40,4 +40,5 @@ private:
     bool pOtherSensorStatChange = false;
     uint8_t pOtherMotorStat = 0;
     bool CanBusyACK = false;
+    bool rStatusAvailable = false;
 };

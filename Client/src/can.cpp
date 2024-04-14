@@ -56,8 +56,6 @@ bool CanCotroll::read_other_motor_stat(uint8_t *istat)
 void CanCotroll::send_status(int32_t iLocation,bool isMoving, bool iSensorBottom,bool iSensorTOP,bool iSendNOW)
 {
     uint8_t *ptrSend;
-    if(CanBusyACK == true)
-        return;
     if(iSendNOW == true)
         pt_interval = time_us_64();
     if(pt_interval > time_us_64())
@@ -65,12 +63,12 @@ void CanCotroll::send_status(int32_t iLocation,bool isMoving, bool iSensorBottom
     pt_interval = time_us_64() + c_interval_status;
     if(isMoving == false)
         pt_interval = time_us_64() + (c_interval_status * 5);
-    CanBusyACK = true;
-    p_canSend.header.rtr = 0;
-    p_canSend.header.length = 6;
-    int32_to_ptrint8(iLocation,(uint8_t *)&p_canSend.data[C_DSC_ARRAY_STATUS_LOCATION_index + 1]);
-    p_canSend.data[C_DSC_ARRAY_OPCODE] = C_DSC_OPCODE_REG_STATUS;
-    ptrSend = &p_canSend.data[C_DSC_ARRAY_STATUS_REPORT_1byte + 1];
+    rStatusAvailable = true;
+    p_status.header.rtr = 0;
+    p_status.header.length = 6;
+    int32_to_ptrint8(iLocation,(uint8_t *)&p_status.data[C_DSC_ARRAY_STATUS_LOCATION_index + 1]);
+    p_status.data[C_DSC_ARRAY_OPCODE] = C_DSC_OPCODE_REG_STATUS;
+    ptrSend = &p_status.data[C_DSC_ARRAY_STATUS_REPORT_1byte + 1];
     *ptrSend = 0;
     if(iSensorBottom)
         *ptrSend |= set_bv(C_DSC_BIT_STATUS_SENSOR_BOTTOM_STATUS);
@@ -78,7 +76,7 @@ void CanCotroll::send_status(int32_t iLocation,bool isMoving, bool iSensorBottom
         *ptrSend |= set_bv(C_DSC_BIT_STATUS_SENSOR_TOP_STATUS);
     if(isMoving)
         *ptrSend |= set_bv(C_DSC_BIT_STATUS_MOTOR_MOVING);
-    p_canSend.id = C_DSC_Server_ADDRESS_CAN + p_address;
+    p_status.id = C_DSC_Server_ADDRESS_CAN + p_address;
 }
 uint32_t CanCotroll::set_bv(uint8_t iBv)
 {
@@ -118,15 +116,21 @@ void CanCotroll::run()
         if(p_canRX.id == p_other_sensor_address)
             handle_other_sensor();
     }
-    if(CanBusyACK == false)
+    if((CanBusyACK == false) && (rStatusAvailable == false))
         return;
     if(mcp2515_check_free_buffer() == false)
         return;
-    if(p_canSend.id == p_other_sensor_address)
-        handle_Self_OtherSensor_Status(p_canSend.data[C_DSC_ARRAY_STATUS_REPORT_1byte + 1]);
-    if(mcp2515_send_message(&p_canSend))
+    if(rStatusAvailable)
     {
-        CanBusyACK = false;
+        rStatusAvailable = (mcp2515_send_message(&p_status)) ? false : rStatusAvailable;
+        if(p_status.id == p_other_sensor_address)
+            handle_Self_OtherSensor_Status(p_status.data[C_DSC_ARRAY_STATUS_REPORT_1byte + 1]);
+        return;
+    }
+    if(CanBusyACK)
+    {
+        CanBusyACK = (mcp2515_send_message(&p_canSend)) ? false : CanBusyACK;
+        return;
     }
 }
 CanCotroll::CanCotroll(uint8_t i_add)
