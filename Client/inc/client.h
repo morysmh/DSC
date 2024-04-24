@@ -51,5 +51,5 @@ private:
     bool bFailure = false;
     int32_t rEncoderVal = 0;
     int8_t rFailureHyst = 0;
-    const int8_t cFailureHystCount = 30;
+    const int8_t cFailureHystCount = 80;
 };

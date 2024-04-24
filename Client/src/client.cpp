@@ -53,7 +53,7 @@ void Client::CheckFailure()
 {
     if(tFailCheck > time_us_64())
         return;
-    tFailCheck = time_us_64() + 6000;
+    tFailCheck = time_us_64() + 8000;
     if(bFailure)
     {
         return;
