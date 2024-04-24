@@ -53,14 +53,12 @@ void Client::CheckFailure()
 {
     if(tFailCheck > time_us_64())
         return;
-    tFailCheck = time_us_64() + 4000;
+    tFailCheck = time_us_64() + 6000;
     if(bFailure)
     {
-        //o_stepmotor->stop();
-        //o_stepmotor->pid_disable();
         return;
     }
-    if(!o_stepmotor->is_pulse_available())
+    if(!o_stepmotor->isMoving())
         return;
     if(o_encoder->get_location() != rEncoderVal)
     {

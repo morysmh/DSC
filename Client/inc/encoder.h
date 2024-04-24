@@ -16,6 +16,7 @@ public:
     void hardware_enable(){p_software_encoder = false;}
     void hardware_disable(){p_software_encoder = true;}
     void direction(bool i_dir){p_direction = i_dir;}
+    int32_t get_resolation() const { return p_nm_pp*10;}
 
 private:
     int8_t p_pinA = -1;

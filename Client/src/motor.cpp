@@ -5,7 +5,7 @@ bool StepMotor::isMoving()
     int32_t rdiff = p_togo_Location - p_current_location;
     if(rdiff < 0)
         rdiff = rdiff * (-1);
-    if(rdiff < cMotorMovingRes)
+    if(rdiff <= cMotorMovingRes)
         return false;
     return true;
 }
