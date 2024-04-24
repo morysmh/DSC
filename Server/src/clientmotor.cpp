@@ -111,6 +111,8 @@ void virtualMotor::setOtherMotorSensorStop(uint8_t iMotNo)
 }
 void virtualMotor::setToGo(int32_t itogo)
 {
+    if(pDSCFailure)
+        return;
     uint8_t ptmpBuff[10] = {};
     ptrCAN->int32_to_ptrint8(itogo,&ptmpBuff[C_DSC_ARRAY_TOGO_REG_index]);
     ptrCAN->send_data(pAddressMotor,C_DSC_OPCODE_REG_TOGO,ptmpBuff);
@@ -162,7 +164,7 @@ void virtualMotor::synchConfig()
 {
     ptrCAN->send_data(pAddressMotor,C_DSC_OPCODE_REG_CONFIG,pdataConfig);
 }
-void virtualMotor::readCAN(int32_t iLocation,bool iBottomSensorStat,bool iTopSensorStat,bool imotorMoving,uint8_t iMorNO)
+void virtualMotor::readCAN(int32_t iLocation,bool iBottomSensorStat,bool iTopSensorStat,bool imotorMoving,uint8_t iMorNO,bool bFailure)
 {
     if(iMorNO == pdataConfig[C_DSC_ARRAY_CONFIG_REG_FROM_OTHER_MOTOR_STATUS_READ])
     {
@@ -184,6 +186,14 @@ void virtualMotor::readCAN(int32_t iLocation,bool iBottomSensorStat,bool iTopSen
         {
             pToGoPosition = 0;
             pCurrentPosition = 0;
+        }
+    }
+    if(pDSCFailure != bFailure)
+    {
+        pDSCFailure = bFailure;
+        if(pDSCFailure)
+        {
+            stop();
         }
     }
 }

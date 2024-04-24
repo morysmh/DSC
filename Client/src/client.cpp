@@ -8,7 +8,8 @@ void Client::send_LocationData(bool iSNow)
                         o_stepmotor->isMoving(),
                         o_bottom->get_sensor_stat(),
                         o_top->get_sensor_stat(),
-                        iSNow);
+                        iSNow,
+                        bFailure);
 }
 Client::Client(
             uint8_t pin_clk,
@@ -48,11 +49,38 @@ Client::~Client()
     delete o_bottom;
 }
 
+void Client::CheckFailure()
+{
+    if(tFailCheck > time_us_64())
+        return;
+    tFailCheck = time_us_64() + 4000;
+    if(bFailure)
+    {
+        //o_stepmotor->stop();
+        //o_stepmotor->pid_disable();
+        return;
+    }
+    if(!o_stepmotor->is_pulse_available())
+        return;
+    if(o_encoder->get_location() != rEncoderVal)
+    {
+        rFailureHyst = 0;
+        rEncoderVal = o_encoder->get_location();
+        return;
+    }
+    rFailureHyst++;
+    if(rFailureHyst < cFailureHystCount)
+        return;
+    bFailure = true;
+    send_LocationData(true);
+    
+}
 
 void Client::run()
 {
     check_message();
     send_LocationData(false);
+    CheckFailure();
     if(o_stepmotor->is_pulse_available())
     {
         o_encoder->set_software_inc(o_stepmotor->get_pulse());
@@ -98,6 +126,7 @@ void Client::handle_message(uint8_t *rbuff,uint8_t motNO,uint8_t iPara)
     {
     case C_DSC_OPCODE_REG_CONFIG:
         config_register_handle(rbuff);
+        bFailure = false;
         break;
     case C_DSC_OPCODE_REG_SPEED:
         speed_register_handle(rbuff);
@@ -143,7 +172,6 @@ void Client::speed_register_handle(uint8_t *data)
         rLow = rHigh;
         rHigh = tmp;
     }
-
 
     o_stepmotor->set_low_us(rLow);
     o_stepmotor->set_MAX_us(rHigh);

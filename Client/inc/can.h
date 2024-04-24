@@ -8,7 +8,7 @@ public:
     ~CanCotroll(){}
     void run();
     void set_other_sensor_code(uint8_t iOtherMotor);
-    void send_status(int32_t iLocation,bool isMoving, bool iSensorBottom,bool iSensorTOP,bool iSendNow);
+    void send_status(int32_t iLocation,bool isMoving, bool iSensorBottom,bool iSensorTOP,bool iSendNow,bool ifail);
     bool read_new_message(uint8_t *ptrdata,uint8_t *motNO,uint8_t *iPara);
     bool read_other_motor_stat(uint8_t *istat);
     void set_interval(uint8_t iVal);

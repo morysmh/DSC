@@ -24,6 +24,7 @@ public:
             );
     ~Client();
     void run();
+    void CheckFailure();
     void increse_sofware_encoder(int8_t i_val);
     void software_fake_message(int32_t iPara,uint8_t *rbuff);
 private:
@@ -45,4 +46,10 @@ private:
     Sensor *o_top,*o_bottom;
     StepMotor *o_stepmotor;
     CanCotroll *o_can;
+
+    uint64_t tFailCheck = 0;
+    bool bFailure = false;
+    int32_t rEncoderVal = 0;
+    int8_t rFailureHyst = 0;
+    const int8_t cFailureHystCount = 5;
 };

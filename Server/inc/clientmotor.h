@@ -25,12 +25,13 @@ public:
     void stop();
     bool isBusy() const {return pMotorMoving;}
     bool isHome() const {return pSensorStatBOTTOM;}
-    void readCAN(int32_t iLocation,bool iBottomSensorStat,bool iTopSensorStat,bool iMotorMoving,uint8_t iMorNO);
+    void readCAN(int32_t iLocation,bool iBottomSensorStat,bool iTopSensorStat,bool iMotorMoving,uint8_t iMorNO,bool bFailure);
     void GoHome();
     void synchConfig();
     void TopSensorStat(bool stat);
     void Move();
     void LockStat(bool Lock);
+    bool isFailued() const {return pDSCFailure;}
 
     int32_t getLocation() const {return pCurrentPosition;}
 
@@ -49,6 +50,7 @@ private:
     bool pSensorStatTOP = false;
     bool pSensorStatBOTTOM = false;
     bool pMotorMoving = false;
+    bool pDSCFailure = false;
 };
 
 #endif

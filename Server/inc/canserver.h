@@ -13,7 +13,8 @@ public:
                             bool *pBottomSensor,
                             bool *pTopSensor,
                             bool *pMotorMoving,
-                            uint8_t *motNO);
+                            uint8_t *motNO,
+                            bool *pFailure);
     void send_data(uint8_t oMotNO,uint8_t iOpcode,uint8_t *data);
     void ptr8_to_int32(uint8_t *ptrdata,int32_t *iout);
     void int32_to_ptrint8(int32_t iVal,uint8_t *ptrdata);

@@ -53,7 +53,7 @@ bool CanCotroll::read_other_motor_stat(uint8_t *istat)
     *istat = pOtherMotorStat;
     return true;
 }
-void CanCotroll::send_status(int32_t iLocation,bool isMoving, bool iSensorBottom,bool iSensorTOP,bool iSendNOW)
+void CanCotroll::send_status(int32_t iLocation,bool isMoving, bool iSensorBottom,bool iSensorTOP,bool iSendNOW,bool ifail)
 {
     uint8_t *ptrSend;
     if(iSendNOW == true)
@@ -76,6 +76,8 @@ void CanCotroll::send_status(int32_t iLocation,bool isMoving, bool iSensorBottom
         *ptrSend |= set_bv(C_DSC_BIT_STATUS_SENSOR_TOP_STATUS);
     if(isMoving)
         *ptrSend |= set_bv(C_DSC_BIT_STATUS_MOTOR_MOVING);
+    if(ifail)
+        *ptrSend |= set_bv(C_DSC_BIT_STATUS_FAILURE_HAPPEN);
     p_status.id = C_DSC_Server_ADDRESS_CAN + p_address;
 }
 uint32_t CanCotroll::set_bv(uint8_t iBv)

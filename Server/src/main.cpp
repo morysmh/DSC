@@ -71,6 +71,7 @@ void lcd_refresh_data(virtualMotor **ptrmot);
 bool persision_home(uint8_t start,virtualMotor **ptrmot);
 
 bool oneStepMove(Sensor *sUp,Sensor *sDown,virtualMotor **ptrmot);
+bool FailureCheck(char *buff,virtualMotor **ptrmot);
 bool move_motor(uint8_t start,virtualMotor **ptrmot);
 void set_speed(int32_t *ptr,virtualMotor **ptrmot);
 void move_releative(int32_t *ptr,virtualMotor **ptrmot);
@@ -98,7 +99,7 @@ int main()
     int32_t iLocation = 0;
     uint8_t iData[10] = {};
     uint8_t imotNO = 0;
-    bool BotSensor,TopSensor,MotorMoving;
+    bool BotSensor,TopSensor,MotorMoving,bFailure;
 
 
     Pico_LED.OFF = 340000;
@@ -140,7 +141,9 @@ int main()
     while (1)
     {
         //lcd_refresh_data(&mot1,&mot2,&mot3,&mot4);
-        lcd_refresh_data(ptrAllMot);
+        bFailure = FailureCheck(r_lcdbuff,ptrAllMot);
+        if(!bFailure)
+            lcd_refresh_data(ptrAllMot);
         persision_home(do_nothing,ptrAllMot);
         move_motor(noAction,ptrAllMot);
         s_reset.run();
@@ -158,12 +161,12 @@ int main()
             pc_active = true;
             handle_pc_communication(r_tmp_input,&dev_can,ptrAllMot);
         }
-        if(dev_can.read_motLocation(&iLocation,&BotSensor,&TopSensor,&MotorMoving,&imotNO));
+        if(dev_can.read_motLocation(&iLocation,&BotSensor,&TopSensor,&MotorMoving,&imotNO,&bFailure));
         {
-            mot1.readCAN(iLocation,BotSensor,TopSensor,MotorMoving,imotNO);
-            mot2.readCAN(iLocation,BotSensor,TopSensor,MotorMoving,imotNO);
-            mot3.readCAN(iLocation,BotSensor,TopSensor,MotorMoving,imotNO);
-            mot4.readCAN(iLocation,BotSensor,TopSensor,MotorMoving,imotNO);
+            mot1.readCAN(iLocation,BotSensor,TopSensor,MotorMoving,imotNO,bFailure);
+            mot2.readCAN(iLocation,BotSensor,TopSensor,MotorMoving,imotNO,bFailure);
+            mot3.readCAN(iLocation,BotSensor,TopSensor,MotorMoving,imotNO,bFailure);
+            mot4.readCAN(iLocation,BotSensor,TopSensor,MotorMoving,imotNO,bFailure);
             if(pc_active)
             {
                 send_to_pc(iLocation,BotSensor,TopSensor,MotorMoving,imotNO);
@@ -493,7 +496,7 @@ void send_to_pc(int32_t iLocation,bool iBottomSensorStat,bool iTopSensorStat,boo
 void for_test_only()
 {
     int32_t iLocation = 0;
-    bool BotSensor,TopSensor,MotorMoving;
+    bool BotSensor,TopSensor,MotorMoving,pFailued;
     uint8_t imotNO;
     int8_t testmotNO;
     int32_t cmNO = 0;
@@ -524,11 +527,11 @@ void for_test_only()
         s_start.run();
         dev_can.run();
         testMOT.run();
-        if(dev_can.read_motLocation(&iLocation,&BotSensor,&TopSensor,&MotorMoving,&imotNO))
+        if(dev_can.read_motLocation(&iLocation,&BotSensor,&TopSensor,&MotorMoving,&imotNO,&pFailued))
         {
             if(testmotNO != imotNO)
                 continue;
-            testMOT.readCAN(iLocation,BotSensor,TopSensor,MotorMoving,imotNO);
+            testMOT.readCAN(iLocation,BotSensor,TopSensor,MotorMoving,imotNO,pFailued);
             sprintf(r_lcdbuff,"1:%d        ",testMOT.getLocation());
             r_lcdbuff[19] = 0;
             lcd_setCursor(0,0);
@@ -745,6 +748,36 @@ bool oneStepMove(Sensor *sUp,Sensor *sDown,virtualMotor **ptrmot)
         move_releative(moveBackward,ptrmot);
     }
 return true;
+}
+bool FailureCheck(char *iBuff,virtualMotor **ptrmot)
+{
+    static volatile uint64_t t_mili = 0;
+    static bool pfaile = false;
+    if(t_mili > time_us_64())
+        return pfaile;
+    t_mili = time_us_64() + 4000;
+    if(pfaile)
+        return pfaile;
+    for(uint i=0;i<4;i++)
+    {
+        if(!ptrmot[i]->isFailued())
+            continue;
+        sprintf(iBuff,"Moto %d Failed      ",i + 1);
+        iBuff[19] = 0;
+        lcd_setCursor(i,0);
+        lcd_print(iBuff);
+        pfaile = true;
+    }
+    if(!pfaile)
+        return pfaile;
+    for(uint i=0;i<4;i++)
+    {
+        ptrmot[i]->stop();
+        ptrmot[i]->setEnableMotor(false);
+        ptrmot[i]->synchConfig();
+    }
+    return pfaile;
+
 }
 bool move_motor(uint8_t start,virtualMotor **ptrmot)
 {
