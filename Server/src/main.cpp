@@ -126,10 +126,12 @@ int main()
     virtualMotor mot4(4,&dev_can);
     virtualMotor *ptrAllMot[4] = {&mot1,&mot2,&mot3,&mot4};
     Sensor s_start(PIN__Z___Pin);
-    Sensor s_reset(PIN_SW___Pin);
-    s_reset.set_normal_stat(false);
+    s_start.setHystus(192000ULL);
     s_start.set_normal_stat(false);
     s_start.enable();
+    Sensor s_reset(PIN_SW___Pin);
+    s_reset.setHystus(192000ULL);
+    s_reset.set_normal_stat(false);
     s_reset.enable();
     
     

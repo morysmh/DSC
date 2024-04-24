@@ -30,6 +30,12 @@ bool Sensor::is_triged()
     p_is_trig = false;
     return true;
 }
+void Sensor::setHystus(int64_t hyst)
+{
+    if(hyst < 20000ULL)
+        hyst = 20000UL;
+    c_hyst_us = hyst;
+}
 void Sensor::run()
 {
     if(p_is_enable == false)

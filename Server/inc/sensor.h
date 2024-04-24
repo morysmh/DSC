@@ -16,8 +16,9 @@ public:
     void run();
     void enable();
     void disable(){p_is_enable = false;}
+    void setHystus(int64_t hyst);
 private:
-    const uint64_t c_hyst_us = 20000ULL;
+    uint64_t c_hyst_us = 20000ULL;
     const uint64_t c_fast_run_prevent = 10ULL;
     int8_t p_pinNO = -1;
     uint64_t p_fast_run = 0,p_change_mili = 0;

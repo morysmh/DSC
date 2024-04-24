@@ -1,5 +1,14 @@
 #include "motor.h"
 
+bool StepMotor::isMoving()
+{
+    int32_t rdiff = p_togo_Location - p_current_location;
+    if(rdiff < 0)
+        rdiff = rdiff * (-1);
+    if(rdiff < cMotorMovingRes)
+        return false;
+    return true;
+}
 bool StepMotor::is_pulse_available()
 {
     if(p_sofware_pulse)
