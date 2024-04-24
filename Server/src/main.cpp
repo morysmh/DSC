@@ -9,18 +9,6 @@
 #include "sensor.h"
 
 typedef enum{
-    do_nothing = 0,
-    home_motor_highspeed_except4,
-    home_motor_4,
-    go_to_900um,
-    low_speed_motor,
-    go_home_low_speed,
-    wait_motor_stop,
-    set_default_speed,
-    stop_Homing_proceger,
-    start_Homing
-}homing;
-typedef enum{
     noAction = 0,
     Start_Moves,
     Stop_Moves
@@ -55,6 +43,7 @@ PIO __encoder_pio;
 uint __encoder_sm;
 //******************************************
 extern int32_t position_speed[][5];
+extern int32_t home_pos[][5];
 
 void Board_pin_Config();
 void chagneLED(LED_Interval *led);
@@ -68,15 +57,16 @@ void handle_pc_communication(int32_t i_data,ServerCAN *dev,virtualMotor **mot);
 void send_to_pc(int32_t iLocation,bool iBottomSensorStat,bool iTopSensorStat,bool iMotorMoving,uint8_t iMorNO);
 void for_test_only();
 void lcd_refresh_data(virtualMotor **ptrmot);
-bool persision_home(uint8_t start,virtualMotor **ptrmot);
 
-bool oneStepMove(Sensor *sUp,Sensor *sDown,virtualMotor **ptrmot);
+bool oneStepMove(int32_t *ptr,Sensor *sUp,Sensor *sDown,virtualMotor **ptrmot);
 bool FailureCheck(char *buff,virtualMotor **ptrmot);
-bool move_motor(uint8_t start,virtualMotor **ptrmot);
+bool move_motor(uint8_t start,virtualMotor **ptrmot,int32_t (*ptrCommand)[5]);
 void set_speed(int32_t *ptr,virtualMotor **ptrmot);
 void move_releative(int32_t *ptr,virtualMotor **ptrmot);
 void move_absolute(int32_t *ptr,virtualMotor **ptrmot);
 void setIndependent_Move(int32_t *i_ptr,independentStruct *a_mot);
+void GoHome_Motor(int32_t *i_ptr,virtualMotor **ptrMot);
+void Stop_Motor_Moving(int32_t *i_ptr,virtualMotor **ptrMot);
 void StatusTOP_Motor(int32_t *i_ptr,virtualMotor **ptrMot);
 bool move_independent_motor(independentStruct *i_indep,virtualMotor **ptrmot);
 
@@ -146,8 +136,7 @@ int main()
         bFailure = FailureCheck(r_lcdbuff,ptrAllMot);
         if(!bFailure)
             lcd_refresh_data(ptrAllMot);
-        persision_home(do_nothing,ptrAllMot);
-        move_motor(noAction,ptrAllMot);
+        move_motor(noAction,ptrAllMot,nullptr);
         s_reset.run();
         s_start.run();
         dev_can.run();
@@ -185,16 +174,14 @@ int main()
                 if(t_mili_reset_interval > time_us_64() )
                     continue;
                 t_mili_reset_interval = time_us_64() + c_reset_interval;
-                move_motor(Stop_Moves,ptrAllMot);
-                persision_home(start_Homing,ptrAllMot);
+                move_motor(Start_Moves,ptrAllMot,home_pos);
             }
         }
         if(s_start.is_triged())
         {
             if(s_start.get_sensor_stat() == 1)
             {
-                persision_home(stop_Homing_proceger,ptrAllMot);
-                move_motor(Start_Moves,ptrAllMot);
+                move_motor(Start_Moves,ptrAllMot,position_speed);
                 //brodcast.start_moving();
                 //brodcast.stop();
             }
@@ -486,7 +473,7 @@ void handle_pc_communication(int32_t i_data,ServerCAN *dev,virtualMotor **mot)
     }
     else if(reg == PC_PersiceHome)
     {
-        persision_home(start_Homing,mot);
+        move_motor(Start_Moves,mot,home_pos);
     }
 }
 void send_to_pc(int32_t iLocation,bool iBottomSensorStat,bool iTopSensorStat,bool iMotorMoving,uint8_t iMorNO)
@@ -589,114 +576,6 @@ void lcd_refresh_data(virtualMotor **ptrmot)
         lcd_buffer_write(r_lcdbuff,ptrmot[i],i);
     }
 }
-bool persision_home(uint8_t iStart,virtualMotor **ptrmot)
-{
-volatile static uint8_t iCount = 0;
-volatile static uint64_t t_mili = 0;
-virtualMotor *mot1 = ptrmot[0],
-             *mot2 = ptrmot[1],
-             *mot3 = ptrmot[2],
-             *mot4 = ptrmot[3];
-if(iStart == stop_Homing_proceger)
-{
-    iCount = do_nothing;
-}
-if((iStart == start_Homing) && (iCount == do_nothing))
-{
-    iCount = home_motor_highspeed_except4;
-}
-if(iCount == do_nothing)
-    return false;
-if(t_mili > time_us_64())
-    return !!(iCount);
-t_mili = time_us_64() + 800000ULL;
-switch (iCount)
-{
-case do_nothing:
-    break;
-case home_motor_highspeed_except4:
-    mot1->setDefaultus(0,0);
-    mot2->setDefaultus(0,0);
-    mot3->setDefaultus(0,0);
-    mot1->stop();
-    mot2->GoHome();
-    mot3->GoHome();
-    mot4->stop();
-    iCount = home_motor_4;
-    break;
-case home_motor_4:
-    if(mot3->getLocation() > 800000LL)
-        break;
-    mot4->setDefaultus(0,0);
-    mot4->GoHome();
-    mot1->GoHome();
-    iCount = go_to_900um;
-    break;
-case go_to_900um:
-    if(mot1->isBusy())
-        break;
-    if(mot2->isBusy())
-        break;
-    if(mot3->isBusy())
-        break;
-    if(mot4->isBusy())
-        break;
-    mot1->setToGo(290000LL);
-    mot2->setToGo(290000LL);
-    mot3->setToGo(290000LL);
-    mot4->setToGo(290000LL);
-    mot1->Move();
-    mot2->Move();
-    mot3->Move();
-    mot4->Move();
-    iCount = low_speed_motor;
-    break;
-case low_speed_motor:
-    if(mot1->isBusy())
-        break;
-    if(mot2->isBusy())
-        break;
-    if(mot3->isBusy())
-        break;
-    if(mot4->isBusy())
-        break;
-    mot1->setSpeedUS(500,2000);
-    mot2->setSpeedUS(500,2000);
-    mot3->setSpeedUS(500,2000);
-    mot4->setSpeedUS(500,2000);
-    iCount = go_home_low_speed;
-    break;
-case go_home_low_speed:
-    mot1->GoHome();
-    mot2->GoHome();
-    mot3->GoHome();
-    mot4->GoHome();
-    iCount = wait_motor_stop;
-    break;
-case wait_motor_stop:
-    if(mot1->isBusy())
-        break;
-    if(mot2->isBusy())
-        break;
-    if(mot3->isBusy())
-        break;
-    if(mot4->isBusy())
-        break;
-    iCount = set_default_speed;
-    break;
-case set_default_speed:
-    mot1->setDefaultus(0,0);
-    mot2->setDefaultus(0,0);
-    mot3->setDefaultus(0,0);
-    mot4->setDefaultus(0,0);
-    iCount = do_nothing;
-    break;
-default:
-    iCount = do_nothing;
-    break;
-}
-return !!(iCount);
-}
 void move_absolute(int32_t *ptr,virtualMotor **ptrmot)
 {
     if(ptr[0] != Absolute)
@@ -737,17 +616,23 @@ void set_speed(int32_t *ptr,virtualMotor **ptrmot)
         ptrmot[i]->setSpeedUS(ptr[i+1],ptr[i+1] + 1500);
     }
 }
-bool oneStepMove(Sensor *sUp,Sensor *sDown,virtualMotor **ptrmot)
+bool oneStepMove(int32_t *ptr,Sensor *sUp,Sensor *sDown,virtualMotor **ptrmot)
 {
-    int32_t moveForward[] = {Reletive,NoChange,NoChange,NoChange,5000};
-    int32_t moveBackward[] = {Reletive,NoChange,NoChange,NoChange,-5000};
+    int32_t move[5] = {};
+    if(ptr[0] != StallExecution)
+        return;
+    move[0] = Reletive;
     if((sUp->is_triged()) && (sUp->get_sensor_stat() == 1))
     {
-        move_releative(moveForward,ptrmot);
+        for(int i=1;i<5;i++)
+            move[i] = ptr[i];
+        move_releative(move,ptrmot);
     }
     if((sDown->is_triged()) && (sDown->get_sensor_stat() == 1))
     {
-        move_releative(moveBackward,ptrmot);
+        for(int i=1;i<5;i++)
+            move[i] = ptr[i] * (-1);
+        move_releative(move,ptrmot);
     }
 return true;
 }
@@ -781,13 +666,14 @@ bool FailureCheck(char *iBuff,virtualMotor **ptrmot)
     return pfaile;
 
 }
-bool move_motor(uint8_t start,virtualMotor **ptrmot)
+bool move_motor(uint8_t start,virtualMotor **ptrmot,int32_t (*ptrCommand)[5])
 {
     static volatile uint16_t iLine = 0;
     static volatile uint64_t t_mili = 0;
     static independentStruct a_IndepMot[10] = {};
     static Sensor sDown(PIN__A___Pin);
     static Sensor sUp(PIN__B___Pin);
+    static volatile int32_t (*pAction)[5] = position_speed;
     sUp.set_normal_stat(false);
     sDown.set_normal_stat(false);
     sUp.enable();
@@ -798,17 +684,23 @@ bool move_motor(uint8_t start,virtualMotor **ptrmot)
     {
         iLine = 0;
     }
+    if((start == Start_Moves) && (ptrCommand != nullptr) && (pAction != ptrCommand))
+    {
+        pAction = ptrCommand;
+        iLine = 1;
+    }
     if((start == Start_Moves) && (iLine == 0))
     {
         iLine = 1;
     }
-    if((start == Start_Moves) && (position_speed[iLine][0] == StallExecution))
+    if((start == Start_Moves) && (pAction[iLine][0] == StallExecution))
     {
         iLine++;
     }
     if(iLine == 0)
         return false;
     move_independent_motor(a_IndepMot,ptrmot);
+    Stop_Motor_Moving((int32_t *)&pAction[iLine][0],ptrmot);
     if(t_mili > time_us_64())
         return true;
     t_mili = time_us_64() + 200000ULL;
@@ -817,28 +709,30 @@ bool move_motor(uint8_t start,virtualMotor **ptrmot)
         if(ptrmot[i]->isBusy())
             return true;
     }
-    if(position_speed[iLine][0] == StallExecution)
+    if(pAction[iLine][0] == StallExecution)
     {
-        oneStepMove(&sUp,&sDown,ptrmot);
+        oneStepMove((int32_t *)&pAction[iLine][0],&sUp,&sDown,ptrmot);
         return true;
     }
 
-    if(position_speed[iLine][0] == Motor_delay)
+    if(pAction[iLine][0] == Motor_delay)
     {
-        t_mili = time_us_64() + ((uint64_t)position_speed[iLine][1]);
+        t_mili = time_us_64() + ((uint64_t)pAction[iLine][1]);
         iLine++;
         return true;
     }
-    if(position_speed[iLine][0] == END_OF_Command)
+    if(pAction[iLine][0] == END_OF_Command)
     {
         iLine = 0;
         return false;
     }
-    move_absolute(&position_speed[iLine][0],ptrmot);
-    move_releative(&position_speed[iLine][0],ptrmot);
-    set_speed(&position_speed[iLine][0],ptrmot);
-    setIndependent_Move(&position_speed[iLine][0],a_IndepMot);
-    StatusTOP_Motor(&position_speed[iLine][0],ptrmot);
+    move_absolute((int32_t *)&pAction[iLine][0],ptrmot);
+    move_releative((int32_t *)&pAction[iLine][0],ptrmot);
+    set_speed((int32_t *)&pAction[iLine][0],ptrmot);
+    setIndependent_Move((int32_t *)&pAction[iLine][0],a_IndepMot);
+    StatusTOP_Motor((int32_t *)&pAction[iLine][0],ptrmot);
+    GoHome_Motor((int32_t *)&pAction[iLine][0],ptrmot);
+
     iLine++;
 
     return true;
@@ -947,6 +841,28 @@ void setIndependent_Move(int32_t *i_ptr,independentStruct *a_mot)
                 a_mot[i].enable = false;
         }
     }
+}
+void GoHome_Motor(int32_t *i_ptr,virtualMotor **ptrMot)
+{
+    if(i_ptr[0] != GoHomeCommand)
+        return;
+    for(uint i=0;i<4;i++)
+    {
+        if(i_ptr[i+1] == Enable)
+            ptrMot[i]->GoHome();
+    }
+
+}
+void Stop_Motor_Moving(int32_t *i_ptr,virtualMotor **ptrMot)
+{
+    if(i_ptr[0] != StopMotorMoving)
+        return;
+    for(uint i=0;i<4;i++)
+    {
+        if(i_ptr[i+1] == Enable)
+            ptrMot[i]->stop();
+    }
+
 }
 void StatusTOP_Motor(int32_t *i_ptr,virtualMotor **ptrMot)
 {
