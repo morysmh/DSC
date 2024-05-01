@@ -34,6 +34,8 @@ public:
     void start_moving();
     void lock_motor(bool val){p_LockMotor = val;}
     void set_EncoderRes(uint16_t inm){pResEncoder = inm/10; cMotorMovingRes = inm;};
+    int32_t get_MinDelay() const {return p_low_us_delay;}
+    int32_t get_DriverRes() const {return p_DriveRes;}
 
 private:
     int32_t p_current_location = 0;
@@ -53,6 +55,7 @@ private:
     uint8_t p_pinDiv3;
     uint8_t p_pinEN;
     uint8_t p_pinSleep;
+    int32_t p_DriveRes = 1;
     bool p_is_config = false;
     bool p_motor_en = false;
     bool p_LockMotor = false;

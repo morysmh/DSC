@@ -10,7 +10,6 @@
 extern "C"
 {
 #endif
-
     void wifi_uart_rx()
     {
         if (uart_is_readable(uart1))

@@ -50,6 +50,6 @@ private:
     uint64_t tFailCheck = 0;
     bool bFailure = false;
     int32_t rEncoderVal = 0;
-    int8_t rFailureHyst = 0;
-    const int8_t cFailureHystCount = 80;
+    int32_t rFailureHyst = 0;
+    const int32_t cFailureHystCount = 200;
 };

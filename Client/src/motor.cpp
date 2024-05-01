@@ -99,6 +99,7 @@ StepMotor::StepMotor(uint8_t i_pinPulse,
 }
 void StepMotor::set_div(uint8_t i_div)
 {
+    p_DriveRes = i_div;
     switch (i_div)
     {
     case 1:

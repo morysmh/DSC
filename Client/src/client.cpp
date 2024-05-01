@@ -53,7 +53,7 @@ void Client::CheckFailure()
 {
     if(tFailCheck > time_us_64())
         return;
-    tFailCheck = time_us_64() + 8000;
+    tFailCheck = time_us_64() + (o_stepmotor->get_DriverRes() * o_stepmotor->get_MinDelay() * 10);
     if(bFailure)
     {
         return;
