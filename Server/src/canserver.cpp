@@ -1,10 +1,5 @@
 #include "canserver.h"
-bool ServerCAN::read_motLocation(int32_t *olocation,
-                                    bool *pBottomSensor,
-                                    bool *pTopSensor,
-                                    bool *pMotorMoving,
-                                    uint8_t *motNO,
-                                    bool *pFailure)
+bool ServerCAN::read_motLocation(int32_t *olocation,int16_t *statusData,uint8_t *motNO)
 {
     if(p_rx_head == p_rx_tail)
         return false;
@@ -14,10 +9,7 @@ bool ServerCAN::read_motLocation(int32_t *olocation,
         return false;
     }
     ptr8_to_int32(&p_rx[p_rx_tail].idata[C_DSC_ARRAY_STATUS_LOCATION_index],olocation);
-    *pBottomSensor = _bv(p_rx[p_rx_tail].idata[C_DSC_ARRAY_STATUS_REPORT_1byte],C_DSC_BIT_STATUS_SENSOR_BOTTOM_STATUS);
-    *pTopSensor = _bv(p_rx[p_rx_tail].idata[C_DSC_ARRAY_STATUS_REPORT_1byte],C_DSC_BIT_STATUS_SENSOR_TOP_STATUS);
-    *pMotorMoving = _bv(p_rx[p_rx_tail].idata[C_DSC_ARRAY_STATUS_REPORT_1byte],C_DSC_BIT_STATUS_MOTOR_MOVING);
-    *pFailure = _bv(p_rx[p_rx_tail].idata[C_DSC_ARRAY_STATUS_REPORT_1byte],C_DSC_BIT_STATUS_FAILURE_HAPPEN);
+    *statusData = p_rx[p_rx_tail].idata[C_DSC_ARRAY_STATUS_REPORT_1byte];
     *motNO = p_rx[p_rx_tail].imotNO;
     p_rx_tail = ringbuff_adder(p_rx_tail,1);
     return true;

@@ -8,16 +8,18 @@ public:
     ~CanCotroll(){}
     void run();
     void set_other_sensor_code(uint8_t iOtherMotor);
-    void send_status(int32_t iLocation,bool isMoving, bool iSensorBottom,bool iSensorTOP,bool iSendNow,bool ifail);
+    //void send_status(int32_t iLocation,bool isMoving, bool iSensorBottom,bool iSensorTOP,bool iSendNow,bool ifail);
+    void send_status(int32_t iLocation,int16_t iData,bool iSendNOW);
     bool read_new_message(uint8_t *ptrdata,uint8_t *motNO,uint8_t *iPara);
     bool read_other_motor_stat(uint8_t *istat);
     void set_interval(uint8_t iVal);
 
     void ptr8_to_int32(uint8_t *ptrdata,int32_t *iout);
     void int32_to_ptrint8(int32_t iVal,uint8_t *ptrdata);
+    void int16_to_ptrint8(int16_t iVal,uint8_t *ptrdata);
+    uint32_t set_bv(uint8_t iBv);
 private:
     void handle_Self_OtherSensor_Status(uint8_t status);//Other Sensor address same as this handler
-    uint32_t set_bv(uint8_t iBv);
     typedef struct{
         uint8_t iPara;
         uint8_t imotNO;

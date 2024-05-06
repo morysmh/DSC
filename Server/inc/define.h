@@ -111,6 +111,7 @@ typedef enum{
     C_DSC_OPCODE_REG_START_STOP = 5,
     C_DSC_OPCODE_REG_PID_CONFIG = 6,
     C_DSC_OPCODE_REG_Releative_TOGO = 7,
+    C_DSC_OPCODE_REG_Failure_Recover = 8,
 
     C_DSC_ARRAY_CONFIG_REG_CONF_1byte = 0,
     C_DSC_ARRAY_CONFIG_REG_CONF_2byte = 1,
@@ -142,6 +143,7 @@ typedef enum{
     C_DSC_BIT_STATUS_SENSOR_BOTTOM_STATUS = 1,
     C_DSC_BIT_STATUS_SENSOR_TOP_STATUS = 2,
     C_DSC_BIT_STATUS_FAILURE_HAPPEN = 3, 
+    C_DSC_BIT_STATUS_Board_NOT_Configured = 4, 
 
     C_DSC_BIT_CONFIG_LOCK_MOTOR = 9,
     C_DSC_BIT_CONFIG_ENCODER_HARDWARE = 8,
@@ -182,7 +184,9 @@ typedef struct
 #define StallExecution 11
 #define GoHomeCommand 12
 #define StopMotorMoving 13
-#define END_OF_Command 20
+#define DisableMotors 14
+#define EnableMotor 15
+#define END_OF_Command 40
 
 #define Enable 1
 #define Disable 0

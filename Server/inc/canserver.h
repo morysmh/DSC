@@ -10,11 +10,8 @@ public:
     ~ServerCAN(){}
     void run();
     bool read_motLocation(int32_t *location,
-                            bool *pBottomSensor,
-                            bool *pTopSensor,
-                            bool *pMotorMoving,
-                            uint8_t *motNO,
-                            bool *pFailure);
+                          int16_t *statusData,
+                            uint8_t *motNO);
     void send_data(uint8_t oMotNO,uint8_t iOpcode,uint8_t *data);
     void ptr8_to_int32(uint8_t *ptrdata,int32_t *iout);
     void int32_to_ptrint8(int32_t iVal,uint8_t *ptrdata);

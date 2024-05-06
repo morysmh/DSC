@@ -4,12 +4,24 @@ void Client::send_LocationData(bool iSNow)
 {
     if(pReportingStaus == false)
         return;
-    o_can->send_status(o_encoder->get_location(),
-                        o_stepmotor->isMoving(),
-                        o_bottom->get_sensor_stat(),
-                        o_top->get_sensor_stat(),
-                        iSNow,
-                        bFailure);
+    if(iSNow)
+        pt_interval = time_us_64();
+    if(pt_interval > time_us_64())
+        return;
+    pt_interval = time_us_64() + c_interval_status;
+    int16_t statusData = 0;
+
+    if(o_bottom->get_sensor_stat())
+        statusData |= o_can->set_bv(C_DSC_BIT_STATUS_SENSOR_BOTTOM_STATUS);
+    if(o_top->get_sensor_stat())
+        statusData |= o_can->set_bv(C_DSC_BIT_STATUS_SENSOR_TOP_STATUS);
+    if(o_stepmotor->isMoving())
+        statusData |= o_can->set_bv(C_DSC_BIT_STATUS_MOTOR_MOVING);
+    if(bFailure)
+        statusData |= o_can->set_bv(C_DSC_BIT_STATUS_FAILURE_HAPPEN);
+    if(!bConfigure)
+        statusData |= o_can->set_bv(C_DSC_BIT_STATUS_Board_NOT_Configured);
+    o_can->send_status(o_encoder->get_location(),statusData,iSNow);
 }
 Client::Client(
             uint8_t pin_clk,
@@ -53,7 +65,7 @@ void Client::CheckFailure()
 {
     if(tFailCheck > time_us_64())
         return;
-    tFailCheck = time_us_64() + (o_stepmotor->get_DriverRes() * o_stepmotor->get_MinDelay() * 10);
+    tFailCheck = time_us_64() + (o_stepmotor->get_DriverRes() * o_stepmotor->get_MinDelay() * 20);
     if(bFailure)
     {
         return;
@@ -71,7 +83,6 @@ void Client::CheckFailure()
         return;
     bFailure = true;
     send_LocationData(true);
-    
 }
 
 void Client::run()
@@ -124,7 +135,6 @@ void Client::handle_message(uint8_t *rbuff,uint8_t motNO,uint8_t iPara)
     {
     case C_DSC_OPCODE_REG_CONFIG:
         config_register_handle(rbuff);
-        bFailure = false;
         break;
     case C_DSC_OPCODE_REG_SPEED:
         speed_register_handle(rbuff);
@@ -144,6 +154,10 @@ void Client::handle_message(uint8_t *rbuff,uint8_t motNO,uint8_t iPara)
         break;
     case C_DSC_OPCODE_REG_Releative_TOGO:
         Releative_togo_register_handle(rbuff);
+        break;
+    case C_DSC_OPCODE_REG_Failure_Recover:
+        bFailure = false;
+        bConfigure = true;
         break;
         
         default:
@@ -176,12 +190,16 @@ void Client::speed_register_handle(uint8_t *data)
 }
 void Client::togo_register_handle(uint8_t *data)
 {
+    if(!bConfigure)
+        return;
     int32_t oToGo = 0;
     o_can->ptr8_to_int32(&data[C_DSC_ARRAY_TOGO_REG_index],&oToGo);
     o_stepmotor->set_move_command_togo(oToGo);
 }
 void Client::Releative_togo_register_handle(uint8_t *data)
 {
+    if(!bConfigure)
+        return;
     int32_t oToGo = 0;
     o_can->ptr8_to_int32(&data[C_DSC_ARRAY_Releative_TOGO_REG_index],&oToGo);
     o_stepmotor->set_move_command_togo_releative(oToGo);

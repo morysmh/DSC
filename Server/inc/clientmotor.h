@@ -25,19 +25,32 @@ public:
     void stop();
     bool isBusy() const {return pMotorMoving;}
     bool isHome() const {return pSensorStatBOTTOM;}
-    void readCAN(int32_t iLocation,bool iBottomSensorStat,bool iTopSensorStat,bool iMotorMoving,uint8_t iMorNO,bool bFailure);
+    void readCAN(int32_t iLocation,int16_t statusData,uint8_t iMorNO);
     void GoHome();
+    void FailureRecover();
     void synchConfig();
     void TopSensorStat(bool stat);
     void Move();
     void LockStat(bool Lock);
-    bool isFailued() const {return pDSCFailure;}
+    bool isFailued();
+    void lcdData(char *data);
+    void shutmotor();
 
     int32_t getLocation() const {return pCurrentPosition;}
+    uint8_t getMotNo() const {return pAddressMotor;}
+    bool isRecoveryNeeded();
 
     void run();
 private:
+    uint32_t longtostr(char *data,int64_t value,int base = 10);
+    uint32_t strcpstr(char *output,const char *copyfrom,int32_t size = 0);
+    bool _bv(uint32_t iVal,uint8_t iBV){
+        if(iVal & (1ULL<<iBV))
+            return true;
+        return false;
+    }
     void writeConfigRegMotor(uint8_t bit,bool val);
+    uint64_t pTimeRecovery = 0;
     uint8_t pdataConfig[10] = {};
     uint16_t pLowDelayPulse = 5000LL;
     uint16_t pHighDelayPulse = 15000LL;
@@ -51,6 +64,9 @@ private:
     bool pSensorStatBOTTOM = false;
     bool pMotorMoving = false;
     bool pDSCFailure = false;
+    bool pDSCnotConfig = false;
+    bool pMotorIsConfiged = false;
+    bool pRecoverStat = true;
 };
 
 #endif

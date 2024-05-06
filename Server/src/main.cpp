@@ -59,7 +59,8 @@ void for_test_only();
 void lcd_refresh_data(virtualMotor **ptrmot);
 
 bool oneStepMove(int32_t *ptr,Sensor *sUp,Sensor *sDown,virtualMotor **ptrmot);
-bool FailureCheck(char *buff,virtualMotor **ptrmot);
+bool FailureCheck(virtualMotor **ptrmot);
+bool ShutMotors(virtualMotor **ptrmot);
 bool move_motor(uint8_t start,virtualMotor **ptrmot,int32_t (*ptrCommand)[5]);
 void set_speed(int32_t *ptr,virtualMotor **ptrmot);
 void move_releative(int32_t *ptr,virtualMotor **ptrmot);
@@ -76,8 +77,6 @@ void LoleSange(virtualMotor **allmot);
 
 int main()
 {
-    int64_t t_mili_reset_interval = 0;
-    const int64_t c_reset_interval = 2500000LL;
     LED_Interval Pico_LED;
     volatile int8_t add = 0;
 
@@ -85,11 +84,12 @@ int main()
 
     char r_lcdbuff[80] = {};
     bool pc_active = false;
-    volatile uint64_t t_first = time_us_64() + 25000ULL;
+    volatile uint64_t t_first = time_us_64() + 750000ULL;
     int32_t iLocation = 0;
     uint8_t iData[10] = {};
     uint8_t imotNO = 0;
-    bool BotSensor,TopSensor,MotorMoving,bFailure;
+    int16_t statusData = 0;
+    bool bFailure;
 
 
     Pico_LED.OFF = 340000;
@@ -125,6 +125,7 @@ int main()
     s_reset.enable();
     
     
+    bFailure = FailureCheck(ptrAllMot);
     //SangeMile(ptrAllMot);
     LoleSange(ptrAllMot);
 
@@ -132,10 +133,8 @@ int main()
     while(t_first > time_us_64());
     while (1)
     {
-        //lcd_refresh_data(&mot1,&mot2,&mot3,&mot4);
-        bFailure = FailureCheck(r_lcdbuff,ptrAllMot);
-        if(!bFailure)
-            lcd_refresh_data(ptrAllMot);
+        bFailure = FailureCheck(ptrAllMot);
+        lcd_refresh_data(ptrAllMot);
         move_motor(noAction,ptrAllMot,nullptr);
         s_reset.run();
         s_start.run();
@@ -152,15 +151,18 @@ int main()
             pc_active = true;
             handle_pc_communication(r_tmp_input,&dev_can,ptrAllMot);
         }
-        if(dev_can.read_motLocation(&iLocation,&BotSensor,&TopSensor,&MotorMoving,&imotNO,&bFailure));
+        if(dev_can.read_motLocation(&iLocation,&statusData,&imotNO));
         {
-            mot1.readCAN(iLocation,BotSensor,TopSensor,MotorMoving,imotNO,bFailure);
-            mot2.readCAN(iLocation,BotSensor,TopSensor,MotorMoving,imotNO,bFailure);
-            mot3.readCAN(iLocation,BotSensor,TopSensor,MotorMoving,imotNO,bFailure);
-            mot4.readCAN(iLocation,BotSensor,TopSensor,MotorMoving,imotNO,bFailure);
+            mot1.readCAN(iLocation,statusData,imotNO);
+            mot2.readCAN(iLocation,statusData,imotNO);
+            mot3.readCAN(iLocation,statusData,imotNO);
+            mot4.readCAN(iLocation,statusData,imotNO);
             if(pc_active)
             {
-                send_to_pc(iLocation,BotSensor,TopSensor,MotorMoving,imotNO);
+                send_to_pc(iLocation,
+                statusData & (1<<C_DSC_BIT_STATUS_SENSOR_TOP_STATUS),
+                statusData & (1<<C_DSC_BIT_STATUS_SENSOR_BOTTOM_STATUS),
+                statusData & (1<<C_DSC_BIT_STATUS_MOTOR_MOVING),imotNO);
             }
         }
         if(pc_active)
@@ -169,21 +171,16 @@ int main()
         }
         if(s_reset.is_triged())
         {
-            if(s_reset.get_sensor_stat() == 1)
+            if((s_reset.get_sensor_stat() == 1))
             {
-                if(t_mili_reset_interval > time_us_64() )
-                    continue;
-                t_mili_reset_interval = time_us_64() + c_reset_interval;
                 move_motor(Start_Moves,ptrAllMot,home_pos);
             }
         }
         if(s_start.is_triged())
         {
-            if(s_start.get_sensor_stat() == 1)
+            if((s_start.get_sensor_stat() == 1) && (!bFailure))
             {
                 move_motor(Start_Moves,ptrAllMot,position_speed);
-                //brodcast.start_moving();
-                //brodcast.stop();
             }
         }
         
@@ -485,7 +482,7 @@ void send_to_pc(int32_t iLocation,bool iBottomSensorStat,bool iTopSensorStat,boo
 void for_test_only()
 {
     int32_t iLocation = 0;
-    bool BotSensor,TopSensor,MotorMoving,pFailued;
+    int16_t statusData;
     uint8_t imotNO;
     int8_t testmotNO;
     int32_t cmNO = 0;
@@ -516,11 +513,11 @@ void for_test_only()
         s_start.run();
         dev_can.run();
         testMOT.run();
-        if(dev_can.read_motLocation(&iLocation,&BotSensor,&TopSensor,&MotorMoving,&imotNO,&pFailued))
+        if(dev_can.read_motLocation(&iLocation,&statusData,&imotNO))
         {
             if(testmotNO != imotNO)
                 continue;
-            testMOT.readCAN(iLocation,BotSensor,TopSensor,MotorMoving,imotNO,pFailued);
+            testMOT.readCAN(iLocation,statusData,imotNO);
             sprintf(r_lcdbuff,"1:%d        ",testMOT.getLocation());
             r_lcdbuff[19] = 0;
             lcd_setCursor(0,0);
@@ -531,7 +528,7 @@ void for_test_only()
             lcdLine++;
             if(lcdLine > 3)
                 lcdLine = 1;
-            sprintf(r_lcdbuff,"%d-%db%dt%dm%d %d      ",cmNO,imotNO,BotSensor,TopSensor,MotorMoving,iLocation);
+            //sprintf(r_lcdbuff,"%d-%db%dt%dm%d %d      ",cmNO,imotNO,BotSensor,TopSensor,MotorMoving,iLocation);
             r_lcdbuff[19] = 0;
             lcd_setCursor(lcdLine,0);
             lcd_print(r_lcdbuff);
@@ -573,7 +570,10 @@ void lcd_refresh_data(virtualMotor **ptrmot)
     mili_refresh = time_us_64() + 980000LL;
     for(uint i = 0;i<4;i++)
     {
-        lcd_buffer_write(r_lcdbuff,ptrmot[i],i);
+        ptrmot[i]->lcdData(r_lcdbuff);
+        r_lcdbuff[19] = 0;
+        lcd_setCursor(ptrmot[i]->getMotNo() - 1,0);
+        lcd_print(r_lcdbuff);
     }
 }
 void move_absolute(int32_t *ptr,virtualMotor **ptrmot)
@@ -620,7 +620,7 @@ bool oneStepMove(int32_t *ptr,Sensor *sUp,Sensor *sDown,virtualMotor **ptrmot)
 {
     int32_t move[5] = {};
     if(ptr[0] != StallExecution)
-        return;
+        return false;
     move[0] = Reletive;
     if((sUp->is_triged()) && (sUp->get_sensor_stat() == 1))
     {
@@ -636,34 +636,37 @@ bool oneStepMove(int32_t *ptr,Sensor *sUp,Sensor *sDown,virtualMotor **ptrmot)
     }
 return true;
 }
-bool FailureCheck(char *iBuff,virtualMotor **ptrmot)
+bool ShutMotors(virtualMotor **ptrmot)
+{
+    return true;
+    for(uint i=0;i<4;i++){
+        ptrmot[i]->shutmotor();
+    }
+    return true;
+}
+bool FailureCheck(virtualMotor **ptrmot)
 {
     static volatile uint64_t t_mili = 0;
     static bool pfaile = false;
     if(t_mili > time_us_64())
         return pfaile;
     t_mili = time_us_64() + 4000;
-    if(pfaile)
-        return pfaile;
-    for(uint i=0;i<4;i++)
-    {
+    pfaile = false;
+    for(uint i=0;i<4;i++){
         if(!ptrmot[i]->isFailued())
             continue;
-        sprintf(iBuff,"Moto %d Failed      ",i + 1);
-        iBuff[19] = 0;
-        lcd_setCursor(i,0);
-        lcd_print(iBuff);
+        t_mili = time_us_64() + 5000000ULL;
         pfaile = true;
     }
     if(!pfaile)
-        return pfaile;
-    for(uint i=0;i<4;i++)
-    {
-        ptrmot[i]->stop();
-        ptrmot[i]->setEnableMotor(false);
-        ptrmot[i]->synchConfig();
+        return false;
+    for(uint i=0;i<4;i++){
+        if(ptrmot[i]->isRecoveryNeeded())
+            continue;
+        ptrmot[i]->shutmotor();
+        t_mili = time_us_64() + 5000000ULL;
     }
-    return pfaile;
+    return true;
 
 }
 bool move_motor(uint8_t start,virtualMotor **ptrmot,int32_t (*ptrCommand)[5])
@@ -746,12 +749,15 @@ void LoleSange(virtualMotor **allmot)
         allmot[i]->setSensorTOPNormalStat(false);
         allmot[i]->setDir(false);
         allmot[i]->setDirEncoder(false);
-        allmot[i]->synchConfig();
     }
     allmot[0]->setDefaultus(600LL,2500LL);
     allmot[1]->setDefaultus(25,1500);
     allmot[2]->setDefaultus(400,2500LL);
     allmot[3]->setDefaultus(65,1500);
+    for(uint i=0;i<4;i++){
+        allmot[i]->synchConfig();
+        allmot[i]->FailureRecover();
+    }
 }
 void SangeMile(virtualMotor **allmot)
 {
@@ -779,8 +785,10 @@ void SangeMile(virtualMotor **allmot)
     allmot[1]->setDefaultus(25,1500);
     allmot[2]->setDefaultus(25,1500);
     allmot[3]->setDefaultus(25,1500);
-    for(uint i=0;i<4;i++)
+    for(uint i=0;i<4;i++){
         allmot[i]->synchConfig();
+        allmot[i]->FailureRecover();
+    }
 }
 bool move_independent_motor(independentStruct *i_indep,virtualMotor **ptrmot)
 {

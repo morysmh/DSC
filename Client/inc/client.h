@@ -49,7 +49,10 @@ private:
 
     uint64_t tFailCheck = 0;
     bool bFailure = false;
+    bool bConfigure = false;
     int32_t rEncoderVal = 0;
     int32_t rFailureHyst = 0;
     const int32_t cFailureHystCount = 200;
+    uint64_t c_interval_status = 15138ULL;
+    uint64_t pt_interval = 0;
 };

@@ -111,7 +111,7 @@ void virtualMotor::setOtherMotorSensorStop(uint8_t iMotNo)
 }
 void virtualMotor::setToGo(int32_t itogo)
 {
-    if(pDSCFailure)
+    if(isFailued())
         return;
     uint8_t ptmpBuff[10] = {};
     ptrCAN->int32_to_ptrint8(itogo,&ptmpBuff[C_DSC_ARRAY_TOGO_REG_index]);
@@ -163,9 +163,17 @@ void virtualMotor::setSensorTOPNormalStat(bool iVal)
 void virtualMotor::synchConfig()
 {
     ptrCAN->send_data(pAddressMotor,C_DSC_OPCODE_REG_CONFIG,pdataConfig);
+    pMotorIsConfiged = true;
 }
-void virtualMotor::readCAN(int32_t iLocation,bool iBottomSensorStat,bool iTopSensorStat,bool imotorMoving,uint8_t iMorNO,bool bFailure)
+void virtualMotor::readCAN(int32_t iLocation,int16_t statusData,uint8_t iMorNO)
 {
+    bool iBottomSensorStat,iTopSensorStat,imotorMoving,bFailure,bNOTConfigured;
+    iBottomSensorStat = _bv(statusData,C_DSC_BIT_STATUS_SENSOR_BOTTOM_STATUS);
+    iTopSensorStat = _bv(statusData,C_DSC_BIT_STATUS_SENSOR_TOP_STATUS);
+    imotorMoving = _bv(statusData,C_DSC_BIT_STATUS_MOTOR_MOVING);
+    bFailure = _bv(statusData,C_DSC_BIT_STATUS_FAILURE_HAPPEN);
+    bNOTConfigured = _bv(statusData,C_DSC_BIT_STATUS_Board_NOT_Configured);
+
     if(iMorNO == pdataConfig[C_DSC_ARRAY_CONFIG_REG_FROM_OTHER_MOTOR_STATUS_READ])
     {
         if(iTopSensorStat != pSensorStatTOP)
@@ -196,6 +204,14 @@ void virtualMotor::readCAN(int32_t iLocation,bool iBottomSensorStat,bool iTopSen
             stop();
         }
     }
+    if((pDSCnotConfig != bNOTConfigured) && (pMotorIsConfiged))
+    {
+        pDSCnotConfig = bNOTConfigured;
+        if(pDSCnotConfig)
+        {
+            stop();
+        }
+    }
 }
 
 void virtualMotor::communicate_to_can(uint8_t ipara,uint8_t *idata)
@@ -219,4 +235,86 @@ void virtualMotor::GoHome()
         return;
     setToGo(-500000000LL);
     Move();
+}
+void virtualMotor::FailureRecover()
+{
+    uint8_t ptmpBuff[10] = {};
+    ptrCAN->send_data(pAddressMotor,C_DSC_OPCODE_REG_Failure_Recover,ptmpBuff);
+    pRecoverStat = false;
+}
+bool virtualMotor::isRecoveryNeeded(){
+    return pRecoverStat;
+}
+bool virtualMotor::isFailued(){
+    return (pDSCFailure || pDSCnotConfig);
+}
+void virtualMotor::lcdData(char *idata){
+    uint8_t i = 0;
+    if((isFailued()) || (pRecoverStat)){
+        i = i + strcpstr(&idata[i],"M");
+        i = i + longtostr(&idata[i],pAddressMotor,10);
+        i = i + strcpstr(&idata[i]," Failed NC");
+        i = i + longtostr(&idata[i],pDSCnotConfig,10);
+        i = i + strcpstr(&idata[i]," F");
+        i = i + longtostr(&idata[i],pDSCFailure,10);
+        i = i + strcpstr(&idata[i]," R");
+        i = i + longtostr(&idata[i],pRecoverStat,10);
+        i = i + strcpstr(&idata[i],"                    ",20 - i);
+        return;
+    }
+    i = i + longtostr(&idata[i],isBusy(),10);
+    i = i + strcpstr(&idata[i]," M");
+    i = i + longtostr(&idata[i],pAddressMotor,10);
+    i = i + strcpstr(&idata[i],":");
+    i = i + longtostr(&idata[i],pCurrentPosition,10);
+    i = i + strcpstr(&idata[i],"                    ",20 - i);
+}
+// if size equal to zero copy untill it reach to *copyfrom == \0
+uint32_t virtualMotor::strcpstr(char *output,const char *copyfrom,int32_t size){
+    //put maximum limit of 255 to copy
+    uint32_t ret = 0;
+    if(size <= 0)
+        size = 255;
+    while((size > 0) && (*copyfrom != '\0')){
+        *output++ = *copyfrom++;
+        size--;
+        ret++;
+    }
+    return ret;
+}
+uint32_t virtualMotor::longtostr(char *data,int64_t value,int base){
+		uint64_t tmp;
+		int8_t i = 0;
+		char *ptrbase = data;
+		char basedig[] = "0123456789abcdef";
+		uint32_t ret = 0;
+		if((base < 2) || (base > 16)){*data =  '\0';return 0;}
+		if(value < 0){
+				value *= -1;
+				*ptrbase = '-';
+				ptrbase++;
+				ret++;
+		}
+		tmp = value;
+		do{
+				tmp /= base;
+				ptrbase++;
+		}while(tmp > 0);
+		*ptrbase = '\0';
+		tmp = value;
+		do{
+				ptrbase--;
+				ret++;
+				*ptrbase = basedig[tmp % base];
+				tmp /= base;
+		}while(tmp > 0);
+		return ret;
+}
+void virtualMotor::shutmotor(){
+    if(pRecoverStat)
+        return;
+    stop();
+    setEnableMotor(false);
+    synchConfig();
+    pRecoverStat = true;
 }
