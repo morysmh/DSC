@@ -185,7 +185,12 @@ class guiclass():
         if self.comActive == 0:
             return
         Step.moveMotor(self.motorNo,self.position)
+
+    def moveMotor(self):
         Step.startMoving(self.motorNo)
+
+    def recoverMotor(self):
+        Step.recoverMotor(self.motorNo)
 
     def enable_motor(self):
         if self.comActive == 0:

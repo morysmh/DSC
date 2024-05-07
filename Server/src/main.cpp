@@ -130,6 +130,7 @@ int main()
 
     t_first = time_us_64() + 400000LL;
     while(t_first > time_us_64());
+    //pc_active = true;
     while (1)
     {
         bFailure = FailureCheck(ptrAllMot);
@@ -156,8 +157,7 @@ int main()
             mot2.readCAN(iLocation,statusData,imotNO);
             mot3.readCAN(iLocation,statusData,imotNO);
             mot4.readCAN(iLocation,statusData,imotNO);
-            //if(pc_active)
-            //{
+            //if(pc_active){
                 //send_to_pc(iLocation,
                 //statusData & (1<<C_DSC_BIT_STATUS_SENSOR_TOP_STATUS),
                 //statusData & (1<<C_DSC_BIT_STATUS_SENSOR_BOTTOM_STATUS),
@@ -179,7 +179,6 @@ int main()
                 move_motor(Start_Moves,ptrAllMot,position_speed);
             }
         }
-        
     }
 }
 void Usart_init_wifiTest()
@@ -443,8 +442,9 @@ void handle_pc_communication(int32_t i_data,ServerCAN *dev,virtualMotor **mot)
     }
     else if(reg == PC_MoveAll)
     {
-        for(int i=0;i<4;i++)
-            mot[i]->Move();
+        for(uint8_t i=0;i<4;i++){
+            mot[i]->Move(); 
+        }
     }
     else if(reg == PC_SetDefaulSpeed)
     {
@@ -467,6 +467,9 @@ void handle_pc_communication(int32_t i_data,ServerCAN *dev,virtualMotor **mot)
     else if(reg == PC_PersiceHome)
     {
         move_motor(Start_Moves,mot,home_pos);
+    }
+    else if(reg == PC_RecoverMotor){
+        mot[motno]->RecoverError();
     }
 }
 void send_to_pc(virtualMotor **ptrmot)

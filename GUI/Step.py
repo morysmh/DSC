@@ -14,7 +14,8 @@ Ecom = dict(
     PC_DisableMotor = 6,
     PC_EnableMotor = 7,
     PC_GoHome = 8,
-    PC_PersiceHome = 9)
+    PC_PersiceHome = 9,
+    PC_RecoverMotor = 10)
 def openSerialPort(comnumber = COM):
     global ser
     ser = serial.Serial(port=comnumber,baudrate=baud)
@@ -45,6 +46,12 @@ def sendNewCommand(motor,reg,val):
     valin = int(val)
     b = [(motor & 0xFF),(reg & 0xFF),((valin>>24) & 0xFF),((valin>>16) & 0xFF),((valin>>8) & 0xFF),(valin & 0xFF)]
     rs485_send(b)
+
+def moveall():
+    sendNewCommand(motor=1,reg=Ecom["PC_MoveAll"],val = 1)
+
+def recoverMotor(mot):
+    sendNewCommand(motor=mot,reg=Ecom["PC_RecoverMotor"],val = 1)
 
 def startMoving(mot):
     sendNewCommand(motor=mot,reg=Ecom["PC_MoveMotor"],val = 1)

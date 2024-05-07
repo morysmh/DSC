@@ -93,7 +93,8 @@ typedef enum{
     PC_DisableMotor = 6,
     PC_EnableMotor = 7,
     PC_GoHome = 8,
-    PC_PersiceHome = 9
+    PC_PersiceHome = 9,
+    PC_RecoverMotor = 10
 
 
 }ENUM_Command_List;

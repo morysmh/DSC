@@ -16,6 +16,8 @@ bool ServerCAN::read_motLocation(int32_t *olocation,int16_t *statusData,uint8_t 
 }
 void ServerCAN::send_data(uint8_t oMotNO,uint8_t iOpcode,uint8_t *data)
 {
+    if((oMotNO == C_DSC_BRODCAST_ADDRESS_CAN) && (iOpcode != C_DSC_OPCODE_REG_START_STOP))
+        return;
     p_data[p_send_head].iOpCode = iOpcode;
     p_data[p_send_head].imotNO = oMotNO;
     copy_uint8(p_data[p_send_head].idata,data,7);

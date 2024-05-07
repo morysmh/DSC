@@ -94,6 +94,8 @@ def startaction(event):
     global portOpenCheck 
     for i in allmotor:
         i.send_Position_To_Step()
+        #i.moveMotor()
+    Step.moveall()
     if portOpenCheck == 0:
         return
     refresh_Txt_section()
@@ -150,7 +152,12 @@ def set_next_from_csv(indata):
         i.user_input_releative(c)
     for i in allmotor:
         i.send_Position_To_Step()
+    Step.moveall()
     return 1
+def recoverMotor():
+    print("Here")
+    for i in allmotor:
+        i.recoverMotor()
 
 def change_auto_stat():
     global auto_grinde
@@ -248,6 +255,9 @@ ShutAllMotor.place(relx=0.8,rely= 0.2)
 
 button_auto = tk.Button(frame, text="auto", padx=10, pady=5, fg="white", bg="#263D42",command=change_auto_stat)
 button_auto.place(relx=0.9,rely= 0.2)
+
+recover = tk.Button(frame, text="recover", padx=10, pady=5, fg="white", bg="#263D42",command=recoverMotor)
+recover.place(relx=0.6,rely= 0.2)
 
 mot1 = guiclass.guiclass(root,1,0.04,0.11)
 mot1.bindkeys('D','A','d','a')

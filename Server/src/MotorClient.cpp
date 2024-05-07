@@ -47,7 +47,7 @@ void MotorClient::setPid(uint8_t kp,uint8_t ki,uint8_t kd)
     ptmpBuff[C_DSC_ARRAY_PID_REG_KP] = kp;
     ptmpBuff[C_DSC_ARRAY_PID_REG_KI] = ki;
     ptmpBuff[C_DSC_ARRAY_PID_REG_KD] = kd;
-    ptrCAN->send_data(pAddressMotor,C_DSC_OPCODE_REG_PID_CONFIG,ptmpBuff);
+     communicate_to_can(C_DSC_OPCODE_REG_PID_CONFIG,ptmpBuff);
 }
 void MotorClient::writeConfigRegMotor(uint8_t bit,bool val)
 {
@@ -94,7 +94,7 @@ void MotorClient::setSpeedUS(uint16_t iLow,uint16_t iHigh)
     ptmpBuff[C_DSC_ARRAY_SPEED_REG_HIGH_us_2byte] = (pHighDelayPulse>>8) & 0xFF;
     ptmpBuff[C_DSC_ARRAY_SPEED_REG_LOW_us_1byte] = pLowDelayPulse & 0xFF;
     ptmpBuff[C_DSC_ARRAY_SPEED_REG_LOW_us_2byte] = (pLowDelayPulse>>8) & 0xFF;
-    ptrCAN->send_data(pAddressMotor,C_DSC_OPCODE_REG_SPEED,ptmpBuff);
+    communicate_to_can(C_DSC_OPCODE_REG_SPEED,ptmpBuff);
 
 }
 void MotorClient::setDefaultus(uint16_t iLow,uint16_t iHigh)
@@ -115,21 +115,21 @@ void MotorClient::setMotorPosition(int32_t itogo)
         return;
     uint8_t ptmpBuff[10] = {};
     ptrCAN->int32_to_ptrint8(itogo,&ptmpBuff[C_DSC_ARRAY_TOGO_REG_index]);
-    ptrCAN->send_data(pAddressMotor,C_DSC_OPCODE_REG_TOGO,ptmpBuff);
+    communicate_to_can(C_DSC_OPCODE_REG_TOGO,ptmpBuff);
 }
 void MotorClient::stop()
 {
     uint8_t ptmpBuff[10] = {};
     ptmpBuff[C_DSC_ARRAY_StartStop] = 0;
     ptmpBuff[C_DSC_ARRAY_StartStop] |= (1<<C_DSC_BIT_STOP_MOVING);
-    ptrCAN->send_data(pAddressMotor,C_DSC_OPCODE_REG_START_STOP,ptmpBuff);
+    communicate_to_can(C_DSC_OPCODE_REG_START_STOP,ptmpBuff);
 }
 void MotorClient::MoveMotor()
 {
     uint8_t ptmpBuff[10] = {};
     ptmpBuff[C_DSC_ARRAY_StartStop] = 0;
     ptmpBuff[C_DSC_ARRAY_StartStop] |= (1<<C_DSC_BIT_START_MOVING);
-    ptrCAN->send_data(pAddressMotor,C_DSC_OPCODE_REG_START_STOP,ptmpBuff);
+    communicate_to_can(C_DSC_OPCODE_REG_START_STOP,ptmpBuff);
 }
 
 void MotorClient::TopSensorStat(bool stat)
@@ -154,7 +154,7 @@ void MotorClient::setSensorTOPNormalStat(bool iVal)
 }
 void MotorClient::synchConfig()
 {
-    ptrCAN->send_data(pAddressMotor,C_DSC_OPCODE_REG_CONFIG,pdataConfig);
+    communicate_to_can(C_DSC_OPCODE_REG_CONFIG,pdataConfig);
 }
 void MotorClient::readCAN(int32_t iLocation,int16_t statusData,uint8_t iMorNO)
 {
@@ -213,5 +213,5 @@ void MotorClient::setEncoder_nm(uint16_t inm)
 void MotorClient::setFailureRecover()
 {
     uint8_t ptmpBuff[10] = {};
-    ptrCAN->send_data(pAddressMotor,C_DSC_OPCODE_REG_Failure_Recover,ptmpBuff);
+    communicate_to_can(C_DSC_OPCODE_REG_Failure_Recover,ptmpBuff);
 }

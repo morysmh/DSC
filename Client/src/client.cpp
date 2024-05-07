@@ -158,6 +158,7 @@ void Client::handle_message(uint8_t *rbuff,uint8_t motNO,uint8_t iPara)
     case C_DSC_OPCODE_REG_Failure_Recover:
         bFailure = false;
         bConfigure = true;
+        rFailureHyst = 0;
         break;
         
         default:
