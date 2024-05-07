@@ -6,8 +6,9 @@ int32_t position_speed[][5] =
     {LOCK_MOTOR,Disable,Disable,Disable,Disable}, //DO NOT DELETE THIS LINE
     {TOP_SENSOR_STAT,Enable,Enable,Enable,Enable}, //DO NOT DELETE THIS LINE
     //**************Change the Code Bellow***************
+    {Speed,25000,25000,25000,25000},
+    {Absolute,10000,5000,10000,10000},
     {Speed,DefSpeed,DefSpeed,DefSpeed,DefSpeed},
-    {Absolute,5000,5000,5000,5000},
     {Reletive,NoChange,700000LL,700000LL,120000LL},
     {StallExecution,NoChange,NoChange,NoChange,10000LL}, 
     {Reletive,NoChange,NoChange,7000000LL,1200000LL},

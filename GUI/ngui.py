@@ -105,8 +105,9 @@ auto_grinde = 0
 
 def getPosition():
     global auto_grinde
-    root.after(700,getPosition)              
-    check_auto_grind_Command()
+    if(auto_grinde == 1):
+        root.after(900,getPosition)              
+        check_auto_grind_Command()
 
 filecsv = open("mycsv.csv","r")
 
@@ -128,6 +129,7 @@ def check_auto_grind_Command():
         change_auto_stat()
         return 0
     tmpvar = [re.sub("[^0-9.-]","",i) + "u" for i in b]
+    print(tmpvar)
     set_next_from_csv(tmpvar)
     return 1
 
@@ -162,6 +164,7 @@ def change_auto_stat():
     else:
         auto_grinde = 1
         button_auto.config(bg="#81e381")
+        getPosition()
 
 
 

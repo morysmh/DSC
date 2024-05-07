@@ -5,7 +5,7 @@
 #include "pio_rotary_encoder.pio.h"
 #include "i2c-display-lib.h"
 #include "canserver.h"
-#include "clientmotor.h"
+#include "VirtualMotor.h"
 #include "sensor.h"
 
 typedef enum{
@@ -54,13 +54,13 @@ void Usart_init_wifiTest();
 void Enable_A4498();
 void init_board_config();
 void handle_pc_communication(int32_t i_data,ServerCAN *dev,virtualMotor **mot);
-void send_to_pc(int32_t iLocation,bool iBottomSensorStat,bool iTopSensorStat,bool iMotorMoving,uint8_t iMorNO);
+void send_to_pc(virtualMotor **ptrmot);
 void for_test_only();
 void lcd_refresh_data(virtualMotor **ptrmot);
 
+void ReCoverMotorError(virtualMotor **ptrmot);
 bool oneStepMove(int32_t *ptr,Sensor *sUp,Sensor *sDown,virtualMotor **ptrmot);
 bool FailureCheck(virtualMotor **ptrmot);
-bool ShutMotors(virtualMotor **ptrmot);
 bool move_motor(uint8_t start,virtualMotor **ptrmot,int32_t (*ptrCommand)[5]);
 void set_speed(int32_t *ptr,virtualMotor **ptrmot);
 void move_releative(int32_t *ptr,virtualMotor **ptrmot);
@@ -125,7 +125,6 @@ int main()
     s_reset.enable();
     
     
-    bFailure = FailureCheck(ptrAllMot);
     //SangeMile(ptrAllMot);
     LoleSange(ptrAllMot);
 
@@ -157,29 +156,26 @@ int main()
             mot2.readCAN(iLocation,statusData,imotNO);
             mot3.readCAN(iLocation,statusData,imotNO);
             mot4.readCAN(iLocation,statusData,imotNO);
-            if(pc_active)
-            {
-                send_to_pc(iLocation,
-                statusData & (1<<C_DSC_BIT_STATUS_SENSOR_TOP_STATUS),
-                statusData & (1<<C_DSC_BIT_STATUS_SENSOR_BOTTOM_STATUS),
-                statusData & (1<<C_DSC_BIT_STATUS_MOTOR_MOVING),imotNO);
-            }
+            //if(pc_active)
+            //{
+                //send_to_pc(iLocation,
+                //statusData & (1<<C_DSC_BIT_STATUS_SENSOR_TOP_STATUS),
+                //statusData & (1<<C_DSC_BIT_STATUS_SENSOR_BOTTOM_STATUS),
+                //statusData & (1<<C_DSC_BIT_STATUS_MOTOR_MOVING),imotNO);
+            //}
         }
-        if(pc_active)
-        {
+        if(pc_active){
+            send_to_pc(ptrAllMot);
             continue;
         }
-        if(s_reset.is_triged())
-        {
-            if((s_reset.get_sensor_stat() == 1))
-            {
+        if(s_reset.is_triged()){
+            if((s_reset.get_sensor_stat() == 1)){
+                ReCoverMotorError(ptrAllMot);
                 move_motor(Start_Moves,ptrAllMot,home_pos);
             }
         }
-        if(s_start.is_triged())
-        {
-            if((s_start.get_sensor_stat() == 1) && (!bFailure))
-            {
+        if(s_start.is_triged()){
+            if((s_start.get_sensor_stat() == 1) && (!bFailure)){
                 move_motor(Start_Moves,ptrAllMot,position_speed);
             }
         }
@@ -473,11 +469,21 @@ void handle_pc_communication(int32_t i_data,ServerCAN *dev,virtualMotor **mot)
         move_motor(Start_Moves,mot,home_pos);
     }
 }
-void send_to_pc(int32_t iLocation,bool iBottomSensorStat,bool iTopSensorStat,bool iMotorMoving,uint8_t iMorNO)
+void send_to_pc(virtualMotor **ptrmot)
 {
     int32_t mostat;
-    mostat = (iBottomSensorStat<<3) | (iTopSensorStat<<2) | (iMotorMoving<<1);
-    printf("%d %d %d \n\r",(int32_t)iMorNO,iLocation,mostat);
+    static uint64_t tmili = 0;
+    if(tmili > time_us_64())
+        return;
+    tmili = time_us_64() + 900;
+    for(uint8_t i=0;i<4;i++){
+        if(!ptrmot[i]->PcDataAvailable())
+            continue;
+        mostat = (((uint32_t)ptrmot[i]->isHome())<<3);
+        mostat |= (((uint32_t)ptrmot[i]->isBusy())<<1);
+        printf("%d %d %d \n\r",(int32_t)ptrmot[i]->getMotNo(),ptrmot[i]->getLocation(),mostat);
+    }
+    //mostat = (iBottomSensorStat<<3) | (iTopSensorStat<<2) | (iMotorMoving<<1);
 }
 void for_test_only()
 {
@@ -518,7 +524,7 @@ void for_test_only()
             if(testmotNO != imotNO)
                 continue;
             testMOT.readCAN(iLocation,statusData,imotNO);
-            sprintf(r_lcdbuff,"1:%d        ",testMOT.getLocation());
+            //sprintf(r_lcdbuff,"1:%d        ",testMOT.getLocation());
             r_lcdbuff[19] = 0;
             lcd_setCursor(0,0);
             lcd_print(r_lcdbuff);
@@ -555,7 +561,7 @@ void for_test_only()
 }
 void lcd_buffer_write(char *ibuff,virtualMotor *mot,uint8_t iMotNo)
 {
-    sprintf(ibuff,"%d %d:%d              ",mot->isBusy(),iMotNo+1,mot->getLocation());
+    //sprintf(ibuff,"%d %d:%d              ",mot->isBusy(),iMotNo+1,mot->getLocation());
     ibuff[19] = 0;
     lcd_setCursor(iMotNo,0);
     lcd_print(ibuff);
@@ -636,33 +642,41 @@ bool oneStepMove(int32_t *ptr,Sensor *sUp,Sensor *sDown,virtualMotor **ptrmot)
     }
 return true;
 }
-bool ShutMotors(virtualMotor **ptrmot)
-{
-    return true;
+void ReCoverMotorError(virtualMotor **ptrmot){
+    int8_t countError = 0;
     for(uint i=0;i<4;i++){
-        ptrmot[i]->shutmotor();
+        if(!ptrmot[i]->isError())
+            continue;
+        countError++;
     }
-    return true;
+    if(countError <= 0)
+        return;
+    for(uint i=0;i<4;i++){
+        ptrmot[i]->RecoverError();
+    }
 }
-bool FailureCheck(virtualMotor **ptrmot)
-{
+bool FailureCheck(virtualMotor **ptrmot){
     static volatile uint64_t t_mili = 0;
     static bool pfaile = false;
+    int8_t countError = 0;
     if(t_mili > time_us_64())
         return pfaile;
     t_mili = time_us_64() + 4000;
     pfaile = false;
     for(uint i=0;i<4;i++){
-        if(!ptrmot[i]->isFailued())
+        if(!ptrmot[i]->isError())
             continue;
         t_mili = time_us_64() + 5000000ULL;
+        countError++;
         pfaile = true;
     }
-    if(!pfaile)
+    if(countError == 0){
+        pfaile = false;
         return false;
+    }
+    if(countError >= 4)
+        return pfaile;
     for(uint i=0;i<4;i++){
-        if(ptrmot[i]->isRecoveryNeeded())
-            continue;
         ptrmot[i]->shutmotor();
         t_mili = time_us_64() + 5000000ULL;
     }
@@ -740,8 +754,7 @@ bool move_motor(uint8_t start,virtualMotor **ptrmot,int32_t (*ptrCommand)[5])
 
     return true;
 }
-void LoleSange(virtualMotor **allmot)
-{
+void LoleSange(virtualMotor **allmot){
     for(uint i=0;i<4;i++)
     {
         allmot[i]->setEnableEncoder(true);
@@ -756,7 +769,7 @@ void LoleSange(virtualMotor **allmot)
     allmot[3]->setDefaultus(65,1500);
     for(uint i=0;i<4;i++){
         allmot[i]->synchConfig();
-        allmot[i]->FailureRecover();
+        allmot[i]->RecoverError();
     }
 }
 void SangeMile(virtualMotor **allmot)
@@ -787,7 +800,7 @@ void SangeMile(virtualMotor **allmot)
     allmot[3]->setDefaultus(25,1500);
     for(uint i=0;i<4;i++){
         allmot[i]->synchConfig();
-        allmot[i]->FailureRecover();
+        allmot[i]->RecoverError();
     }
 }
 bool move_independent_motor(independentStruct *i_indep,virtualMotor **ptrmot)

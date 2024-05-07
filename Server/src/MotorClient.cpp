@@ -1,6 +1,6 @@
-#include "clientmotor.h"
+#include "MotorClient.h"
 
-virtualMotor::virtualMotor(uint8_t add,ServerCAN *ptrcan)
+MotorClient::MotorClient(uint8_t add,ServerCAN *ptrcan)
 {
     pAddressMotor = add;
     ptrCAN = ptrcan;
@@ -22,11 +22,11 @@ virtualMotor::virtualMotor(uint8_t add,ServerCAN *ptrcan)
     setSensorBottomNormalStat(true);
     setSensorTOPNormalStat(true);
 }
-void virtualMotor::setReportInterval(uint8_t iVal)
+void MotorClient::setReportInterval(uint8_t iVal)
 {
     pdataConfig[C_DSC_ARRAY_CONFIG_REG_POSITION_INTERVAl] = iVal;
 }
-void virtualMotor::setDiv(uint8_t iDiv)
+void MotorClient::setDiv(uint8_t iDiv)
 {
     switch (iDiv)
     {
@@ -41,7 +41,7 @@ void virtualMotor::setDiv(uint8_t iDiv)
         break;
     }
 }
-void virtualMotor::setPid(uint8_t kp,uint8_t ki,uint8_t kd)
+void MotorClient::setPid(uint8_t kp,uint8_t ki,uint8_t kd)
 {
     uint8_t ptmpBuff[10] = {};
     ptmpBuff[C_DSC_ARRAY_PID_REG_KP] = kp;
@@ -49,7 +49,7 @@ void virtualMotor::setPid(uint8_t kp,uint8_t ki,uint8_t kd)
     ptmpBuff[C_DSC_ARRAY_PID_REG_KD] = kd;
     ptrCAN->send_data(pAddressMotor,C_DSC_OPCODE_REG_PID_CONFIG,ptmpBuff);
 }
-void virtualMotor::writeConfigRegMotor(uint8_t bit,bool val)
+void MotorClient::writeConfigRegMotor(uint8_t bit,bool val)
 {
     uint8_t *ptrData;
     ptrData = &pdataConfig[C_DSC_ARRAY_CONFIG_REG_CONF_1byte];
@@ -62,27 +62,27 @@ void virtualMotor::writeConfigRegMotor(uint8_t bit,bool val)
     if(val)
         *ptrData |= (1<<bit) & 0xFF;
 }
-void virtualMotor::setEnableMotor(bool iVal)
+void MotorClient::setEnableMotor(bool iVal)
 {
     writeConfigRegMotor(C_DSC_BIT_CONFIG_MOTOR_ENABLE,iVal);
 }
-void virtualMotor::setDir(bool iVal)
+void MotorClient::setDir(bool iVal)
 {
     writeConfigRegMotor(C_DSC_BIT_CONFIG_MOTOR_DEFAULT_DIRECTION,iVal);
 }
-void virtualMotor::setDirEncoder(bool iVal)
+void MotorClient::setDirEncoder(bool iVal)
 {
     writeConfigRegMotor(C_DSC_BIT_CONFIG_ENCODER_DEFAULT_DIRECTION,iVal);
 }
-void virtualMotor::setEnablePID(bool iVal)
+void MotorClient::setEnablePID(bool iVal)
 {
     writeConfigRegMotor(C_DSC_BIT_CONFIG_PID_ENABLE,iVal);
 }
-void virtualMotor::setEnableEncoder(bool iVal)
+void MotorClient::setEnableEncoder(bool iVal)
 {
     writeConfigRegMotor(C_DSC_BIT_CONFIG_ENCODER_HARDWARE,iVal);
 }
-void virtualMotor::setSpeedUS(uint16_t iLow,uint16_t iHigh)
+void MotorClient::setSpeedUS(uint16_t iLow,uint16_t iHigh)
 {
     uint8_t ptmpBuff[10] = {};
     if(iLow >= 15LL)
@@ -97,7 +97,7 @@ void virtualMotor::setSpeedUS(uint16_t iLow,uint16_t iHigh)
     ptrCAN->send_data(pAddressMotor,C_DSC_OPCODE_REG_SPEED,ptmpBuff);
 
 }
-void virtualMotor::setDefaultus(uint16_t iLow,uint16_t iHigh)
+void MotorClient::setDefaultus(uint16_t iLow,uint16_t iHigh)
 {
     if(iLow >= 15)
         pDefLow = iLow;
@@ -105,34 +105,26 @@ void virtualMotor::setDefaultus(uint16_t iLow,uint16_t iHigh)
         pDefHigh = iHigh;
     setSpeedUS(pDefLow,pDefHigh);
 }
-void virtualMotor::setOtherMotorSensorStop(uint8_t iMotNo)
+void MotorClient::setOtherMotorSensorStop(uint8_t iMotNo)
 {
     pdataConfig[C_DSC_ARRAY_CONFIG_REG_FROM_OTHER_MOTOR_STATUS_READ] = iMotNo;
 }
-void virtualMotor::setToGo(int32_t itogo)
+void MotorClient::setMotorPosition(int32_t itogo)
 {
-    if(isFailued())
+    if(getFlag_Failued())
         return;
     uint8_t ptmpBuff[10] = {};
     ptrCAN->int32_to_ptrint8(itogo,&ptmpBuff[C_DSC_ARRAY_TOGO_REG_index]);
     ptrCAN->send_data(pAddressMotor,C_DSC_OPCODE_REG_TOGO,ptmpBuff);
 }
-void virtualMotor::setReleativeToGo(int32_t itogo)
-{
-    uint8_t ptmpBuff[10] = {};
-    itogo = itogo + pCurrentPosition;
-    setToGo(itogo);
-    //ptrCAN->int32_to_ptrint8(itogo,&ptmpBuff[C_DSC_ARRAY_Releative_TOGO_REG_index]);
-    //ptrCAN->send_data(pAddressMotor,C_DSC_OPCODE_REG_Releative_TOGO,ptmpBuff);
-}
-void virtualMotor::stop()
+void MotorClient::stop()
 {
     uint8_t ptmpBuff[10] = {};
     ptmpBuff[C_DSC_ARRAY_StartStop] = 0;
     ptmpBuff[C_DSC_ARRAY_StartStop] |= (1<<C_DSC_BIT_STOP_MOVING);
     ptrCAN->send_data(pAddressMotor,C_DSC_OPCODE_REG_START_STOP,ptmpBuff);
 }
-void virtualMotor::Move()
+void MotorClient::MoveMotor()
 {
     uint8_t ptmpBuff[10] = {};
     ptmpBuff[C_DSC_ARRAY_StartStop] = 0;
@@ -140,32 +132,31 @@ void virtualMotor::Move()
     ptrCAN->send_data(pAddressMotor,C_DSC_OPCODE_REG_START_STOP,ptmpBuff);
 }
 
-void virtualMotor::TopSensorStat(bool stat)
+void MotorClient::TopSensorStat(bool stat)
 {
     writeConfigRegMotor(C_DSC_BIT_CONFIG_SENSOR_ENABLE_TOP,stat);
     synchConfig();
 }
-void virtualMotor::LockStat(bool Lock)
+void MotorClient::LockStat(bool Lock)
 {
     writeConfigRegMotor(C_DSC_BIT_CONFIG_LOCK_MOTOR,Lock);
     synchConfig();
 }
-void virtualMotor::setSensorBottomNormalStat(bool iVal)
+void MotorClient::setSensorBottomNormalStat(bool iVal)
 {
     writeConfigRegMotor(C_DSC_BIT_CONFIG_BOTTOM_SENSOR_DEFAULT,iVal);
     writeConfigRegMotor(C_DSC_BIT_CONFIG_SENSOR_ENABLE_BOTTOM,true);
 }
-void virtualMotor::setSensorTOPNormalStat(bool iVal)
+void MotorClient::setSensorTOPNormalStat(bool iVal)
 {
     writeConfigRegMotor(C_DSC_BIT_CONFIG_TOP_SENSOR_DEFAULT,iVal);
     writeConfigRegMotor(C_DSC_BIT_CONFIG_SENSOR_ENABLE_TOP,true);
 }
-void virtualMotor::synchConfig()
+void MotorClient::synchConfig()
 {
     ptrCAN->send_data(pAddressMotor,C_DSC_OPCODE_REG_CONFIG,pdataConfig);
-    pMotorIsConfiged = true;
 }
-void virtualMotor::readCAN(int32_t iLocation,int16_t statusData,uint8_t iMorNO)
+void MotorClient::readCAN(int32_t iLocation,int16_t statusData,uint8_t iMorNO)
 {
     bool iBottomSensorStat,iTopSensorStat,imotorMoving,bFailure,bNOTConfigured;
     iBottomSensorStat = _bv(statusData,C_DSC_BIT_STATUS_SENSOR_BOTTOM_STATUS);
@@ -185,6 +176,7 @@ void virtualMotor::readCAN(int32_t iLocation,int16_t statusData,uint8_t iMorNO)
     }
     if(iMorNO != pAddressMotor)
         return;
+    pNewReport = true;
     pCurrentPosition = iLocation;
     pMotorMoving = imotorMoving;
     if(pSensorStatBOTTOM != iBottomSensorStat)
@@ -199,29 +191,18 @@ void virtualMotor::readCAN(int32_t iLocation,int16_t statusData,uint8_t iMorNO)
     if(pDSCFailure != bFailure)
     {
         pDSCFailure = bFailure;
-        if(pDSCFailure)
-        {
-            stop();
-        }
     }
-    if((pDSCnotConfig != bNOTConfigured) && (pMotorIsConfiged))
+    if(pDSCnotConfig != bNOTConfigured)
     {
         pDSCnotConfig = bNOTConfigured;
-        if(pDSCnotConfig)
-        {
-            stop();
-        }
     }
 }
 
-void virtualMotor::communicate_to_can(uint8_t ipara,uint8_t *idata)
+void MotorClient::communicate_to_can(uint8_t ipara,uint8_t *idata)
 {
     ptrCAN->send_data(pAddressMotor,ipara,idata);
 }
-void virtualMotor::run()
-{
-}
-void virtualMotor::setEncoder_nm(uint16_t inm)
+void MotorClient::setEncoder_nm(uint16_t inm)
 {
     if(inm <= 50)
         inm = 50;
@@ -229,92 +210,8 @@ void virtualMotor::setEncoder_nm(uint16_t inm)
     pdataConfig[C_DSC_ARRAY_CONFIG_REG_ENCODER_RES_2byte] = (inm>>8) & 0xFF;
 }
 
-void virtualMotor::GoHome()
-{
-    if(pSensorStatBOTTOM == true)
-        return;
-    setToGo(-500000000LL);
-    Move();
-}
-void virtualMotor::FailureRecover()
+void MotorClient::setFailureRecover()
 {
     uint8_t ptmpBuff[10] = {};
     ptrCAN->send_data(pAddressMotor,C_DSC_OPCODE_REG_Failure_Recover,ptmpBuff);
-    pRecoverStat = false;
-}
-bool virtualMotor::isRecoveryNeeded(){
-    return pRecoverStat;
-}
-bool virtualMotor::isFailued(){
-    return (pDSCFailure || pDSCnotConfig);
-}
-void virtualMotor::lcdData(char *idata){
-    uint8_t i = 0;
-    if((isFailued()) || (pRecoverStat)){
-        i = i + strcpstr(&idata[i],"M");
-        i = i + longtostr(&idata[i],pAddressMotor,10);
-        i = i + strcpstr(&idata[i]," Failed NC");
-        i = i + longtostr(&idata[i],pDSCnotConfig,10);
-        i = i + strcpstr(&idata[i]," F");
-        i = i + longtostr(&idata[i],pDSCFailure,10);
-        i = i + strcpstr(&idata[i]," R");
-        i = i + longtostr(&idata[i],pRecoverStat,10);
-        i = i + strcpstr(&idata[i],"                    ",20 - i);
-        return;
-    }
-    i = i + longtostr(&idata[i],isBusy(),10);
-    i = i + strcpstr(&idata[i]," M");
-    i = i + longtostr(&idata[i],pAddressMotor,10);
-    i = i + strcpstr(&idata[i],":");
-    i = i + longtostr(&idata[i],pCurrentPosition,10);
-    i = i + strcpstr(&idata[i],"                    ",20 - i);
-}
-// if size equal to zero copy untill it reach to *copyfrom == \0
-uint32_t virtualMotor::strcpstr(char *output,const char *copyfrom,int32_t size){
-    //put maximum limit of 255 to copy
-    uint32_t ret = 0;
-    if(size <= 0)
-        size = 255;
-    while((size > 0) && (*copyfrom != '\0')){
-        *output++ = *copyfrom++;
-        size--;
-        ret++;
-    }
-    return ret;
-}
-uint32_t virtualMotor::longtostr(char *data,int64_t value,int base){
-		uint64_t tmp;
-		int8_t i = 0;
-		char *ptrbase = data;
-		char basedig[] = "0123456789abcdef";
-		uint32_t ret = 0;
-		if((base < 2) || (base > 16)){*data =  '\0';return 0;}
-		if(value < 0){
-				value *= -1;
-				*ptrbase = '-';
-				ptrbase++;
-				ret++;
-		}
-		tmp = value;
-		do{
-				tmp /= base;
-				ptrbase++;
-		}while(tmp > 0);
-		*ptrbase = '\0';
-		tmp = value;
-		do{
-				ptrbase--;
-				ret++;
-				*ptrbase = basedig[tmp % base];
-				tmp /= base;
-		}while(tmp > 0);
-		return ret;
-}
-void virtualMotor::shutmotor(){
-    if(pRecoverStat)
-        return;
-    stop();
-    setEnableMotor(false);
-    synchConfig();
-    pRecoverStat = true;
 }
