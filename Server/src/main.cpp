@@ -135,17 +135,21 @@ int main()
 
         t_first = time_us_64() + 400000LL;
         while(t_first > time_us_64()){
+            s_reset.run();
+            s_start.run();
             dev_can.run();
             mot1.run();
             mot2.run();
             mot3.run();
             mot4.run();
         }
+	    s_start.is_triged();
+	    s_reset.is_triged();
         for(uint jj=0;jj<4;jj++){
             if(ptrAllMot[jj]->isError())
                 failstat = true;
         }
-        if((failstat == false) && (i<3))
+        if((failstat == false) && (i>3))
             break;
         if(i>10){
             lcd_clear();
@@ -207,13 +211,13 @@ int main()
             continue;
         }
         if(s_reset.is_triged()){
-            if((s_reset.get_sensor_stat() == 1)){
+            if((s_reset.get_sensor_stat() == s_reset.get_normal_stat())){
                 ReCoverMotorError(ptrAllMot);
                 move_motor(Start_Moves,ptrAllMot,home_pos);
             }
         }
         if(s_start.is_triged()){
-            if((s_start.get_sensor_stat() == 1) && (!bFailure)){
+            if((s_start.get_sensor_stat() == s_start.get_normal_stat()) && (!bFailure)){
                 move_motor(Start_Moves,ptrAllMot,position_speed);
             }
         }
