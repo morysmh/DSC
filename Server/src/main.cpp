@@ -130,8 +130,8 @@ int main()
     
     for(uint i=1;i;i++){
         bool failstat = false;
-        //SangeMile(ptrAllMot);
-        LoleSange(ptrAllMot);
+        SangeMile(ptrAllMot);
+        //LoleSange(ptrAllMot);
 
         t_first = time_us_64() + 400000LL;
         while(t_first > time_us_64()){
@@ -652,6 +652,8 @@ void move_releative(int32_t *ptr,virtualMotor **ptrmot)
     }
     for(uint i=0;i<4;i++)
     {
+        if(ptr[i+1] == NoChange)
+            continue;
         ptrmot[i]->Move();
     }
 }

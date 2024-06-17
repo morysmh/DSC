@@ -4,6 +4,8 @@ build/
 __pycache__/
 # Prerequisites
 *.d
+#vim swap file
+*.swp
 
 # Compiled Object files
 *.slo
