@@ -84,7 +84,7 @@ int main()
 
     char r_lcdbuff[80] = {};
     bool pc_active = false;
-    volatile uint64_t t_first = time_us_64() + 750000ULL;
+    volatile uint64_t t_first = time_us_64() + 1750000ULL;
     int32_t iLocation = 0;
     uint8_t iData[10] = {};
     uint8_t imotNO = 0;
@@ -100,13 +100,17 @@ int main()
     stdio_init_all();
     Enable_A4498();
     init_board_config();
-    while(t_first > time_us_64());
     add = Keys_Read_adderss();
     mcp2515_init(14);
     lcd_init(14,15);
     lcd_setCursor(0,0);
-    lcd_print("raw data");
+    lcd_print("********************");
+    lcd_setCursor(1,0);
+    lcd_print("***Initialization***");
+    lcd_setCursor(2,0);
+    lcd_print("********************");
     printf("Test uart");
+    while(t_first > time_us_64());
 
     //for_test_only();
     ServerCAN dev_can(1);
@@ -124,12 +128,46 @@ int main()
     s_reset.set_normal_stat(false);
     s_reset.enable();
     
-    
-    //SangeMile(ptrAllMot);
-    LoleSange(ptrAllMot);
+    for(uint i=1;i;i++){
+        bool failstat = false;
+        //SangeMile(ptrAllMot);
+        LoleSange(ptrAllMot);
 
-    t_first = time_us_64() + 400000LL;
-    while(t_first > time_us_64());
+        t_first = time_us_64() + 400000LL;
+        while(t_first > time_us_64()){
+            dev_can.run();
+            mot1.run();
+            mot2.run();
+            mot3.run();
+            mot4.run();
+        }
+        for(uint jj=0;jj<4;jj++){
+            if(ptrAllMot[jj]->isError())
+                failstat = true;
+        }
+        if((failstat == false) && (i<3))
+            break;
+        if(i>10){
+            lcd_clear();
+            lcd_setCursor(0,0);
+            lcd_print("Not able to Start");
+            lcd_setCursor(1,0);
+            lcd_print("client failure");
+            lcd_setCursor(2,0);
+            lcd_print("mot ");
+            if(mot1.isError())
+                lcd_print("1,");
+            if(mot2.isError())
+                lcd_print("2,");
+            if(mot3.isError())
+                lcd_print("3,");
+            if(mot4.isError())
+                lcd_print("4");
+            lcd_print(" Fault");
+            while(1);
+        }
+    }
+    lcd_clear();
     //pc_active = true;
     while (1)
     {
