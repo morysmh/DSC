@@ -594,6 +594,11 @@ void move_absolute(int32_t *ptr,virtualMotor **ptrmot)
         if(ptr[i+1] == NoChange)
             continue;
         ptrmot[i]->setToGo(ptr[i+1]);
+    }
+    for(uint i=0;i<4;i++)
+    {
+        if(ptr[i+1] == NoChange)
+            continue;
         ptrmot[i]->Move();
     }
 }
@@ -606,6 +611,9 @@ void move_releative(int32_t *ptr,virtualMotor **ptrmot)
         if(ptr[i+1] == NoChange)
             continue;
         ptrmot[i]->setReleativeToGo(ptr[i+1]);
+    }
+    for(uint i=0;i<4;i++)
+    {
         ptrmot[i]->Move();
     }
 }

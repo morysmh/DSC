@@ -73,7 +73,21 @@ void virtualMotor::lcdData(char *idata){
     i = i + strcpstr(&idata[i]," M");
     i = i + longtostr(&idata[i],getMotNo(),10);
     i = i + strcpstr(&idata[i],":");
-    i = i + longtostr(&idata[i],getLocation(),10);
+    if(getLocation() >= 100000LL){
+        i = i + longtostr(&idata[i],getLocation()/100000LL,10);
+        i = i + strcpstr(&idata[i],".");
+        i = i + longtostr(&idata[i],(getLocation()%100000LL)/1000,10);
+        i = i + strcpstr(&idata[i],"mm");
+    }
+    else if(getLocation() >= 100LL){
+        i = i + longtostr(&idata[i],getLocation()/100LL,10);
+        i = i + strcpstr(&idata[i],".");
+        i = i + longtostr(&idata[i],(getLocation()%100LL),10);
+        i = i + strcpstr(&idata[i],"um");
+    }
+    else{
+        i = i + longtostr(&idata[i],getLocation(),10);
+    }
     i = i + strcpstr(&idata[i],"                    ",20 - i);
 }
 // if size equal to zero copy untill it reach to *copyfrom == \0
